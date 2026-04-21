@@ -17,10 +17,14 @@ public class ValidationService {
         if("DELETE".equalsIgnoreCase(request.getOperation())&&(request.getFilters()==null || request.getFilters().isEmpty())){
             throw new RuntimeException("DELETE must have where Clause");
         }
-        request.getFilters().forEach(f->{
-            if(!ALLOWED_OPERATORS.contains(f.getOperator())){
-                throw new RuntimeException("Invalid operator");
-            }
-        });
+        // if the filter part is not given by the user then it give the NULL pointer exception so handling the null pointer exception
+        if(request.getFilters()!=null){
+            request.getFilters().forEach(f->{
+                if(!ALLOWED_OPERATORS.contains(f.getOperator().toUpperCase())){
+                    throw new RuntimeException("Invalid operator");
+                }
+            });
+        }
     }
+
 }
