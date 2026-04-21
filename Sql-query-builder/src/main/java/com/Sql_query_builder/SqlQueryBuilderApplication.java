@@ -7,7 +7,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class SqlQueryBuilderApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(SqlQueryBuilderApplication.class, args);
+
+        SpringApplication.run(SqlQueryBuilderApplication.class, args);
+        System.out.println("changes from kartik");
 	}
 
 }
