@@ -9,9 +9,21 @@ export default function RegisterPage() {
   const navigate = useNavigate();
 
   const submit = async () => {
-    await api.post("/auth/register", form);
-    setMessage("Registration successful. Verify your email then login.");
-    setTimeout(() => navigate("/login"), 1200);
+    try {
+      await api.post("/auth/register", form);
+      setMessage("Registration successful! Redirecting to login...");
+      setTimeout(() => navigate("/login"), 1200);
+    } catch (err) {
+      if (err.response?.data?.errors) {
+        const fieldErrors = Object.entries(err.response.data.errors)
+          .map(([field, msg]) => `${field}: ${msg}`)
+          .join(", ");
+        setMessage(`Validation failed: ${fieldErrors}`);
+      } else {
+        const errorMsg = err.response?.data?.message || err.response?.data?.error || "Registration failed. Please try again.";
+        setMessage(errorMsg);
+      }
+    }
   };
 
   return (

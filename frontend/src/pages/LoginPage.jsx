@@ -7,13 +7,19 @@ import { setToken } from "../app/authSlice";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
+  const [message, setMessage] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const submit = async () => {
-    const { data } = await api.post("/auth/login", form);
-    dispatch(setToken(data.token));
-    navigate("/");
+    try {
+      const { data } = await api.post("/auth/login", form);
+      dispatch(setToken(data.token));
+      navigate("/");
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || "Login failed. Please check your credentials.";
+      setMessage(errorMsg);
+    }
   };
 
   return (
@@ -24,6 +30,7 @@ export default function LoginPage() {
           <TextField label="Email" onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <TextField label="Password" type="password" onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <Button variant="contained" onClick={submit}>Sign in</Button>
+          {message && <Typography color="error">{message}</Typography>}
           <Typography>New user? <Link to="/register">Register</Link></Typography>
         </Stack>
       </CardContent>

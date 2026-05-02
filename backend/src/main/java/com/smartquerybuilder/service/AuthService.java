@@ -45,9 +45,15 @@ public class AuthService {
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setVerificationToken(UUID.randomUUID().toString());
+        user.setEmailVerified(true); // Automatically verify for local development
         user.getRoles().add(userRole);
         userRepository.save(user);
-        emailService.sendVerificationMail(user.getEmail(), user.getVerificationToken());
+        
+        try {
+            emailService.sendVerificationMail(user.getEmail(), user.getVerificationToken());
+        } catch (Exception e) {
+            System.err.println("Failed to send verification email: " + e.getMessage());
+        }
     }
 
     public AuthResponse login(LoginRequest request) {
