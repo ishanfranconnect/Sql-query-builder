@@ -30,6 +30,9 @@ export default function LoginPage() {
           <TextField label="Email" onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <TextField label="Password" type="password" onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <Button variant="contained" onClick={submit}>Sign in</Button>
+          <Typography variant="body2" textAlign="right">
+            <Link to="/forgot-password" style={{ color: '#1976d2', textDecoration: 'none' }}>Forgot Password?</Link>
+          </Typography>
           {message && <Typography color="error">{message}</Typography>}
           <Typography>New user? <Link to="/register">Register</Link></Typography>
         </Stack>

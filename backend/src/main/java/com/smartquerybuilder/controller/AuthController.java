@@ -1,8 +1,10 @@
 package com.smartquerybuilder.controller;
 
 import com.smartquerybuilder.dto.AuthResponse;
+import com.smartquerybuilder.dto.ForgotPasswordRequest;
 import com.smartquerybuilder.dto.LoginRequest;
 import com.smartquerybuilder.dto.RegisterRequest;
+import com.smartquerybuilder.dto.ResetPasswordRequest;
 import com.smartquerybuilder.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,14 +38,14 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, String>> forgotPassword(@RequestParam String email) {
-        authService.initiateForgotPassword(email);
-        return ResponseEntity.ok(Map.of("message", "Reset link sent"));
+    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.initiateForgotPassword(request.email());
+        return ResponseEntity.ok(Map.of("message", "If an account exists with this email, a reset link has been sent."));
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<Map<String, String>> resetPassword(@RequestParam String token, @RequestParam String password) {
-        authService.resetPassword(token, password);
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.token(), request.password());
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 }

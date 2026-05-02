@@ -75,12 +75,16 @@ public class AuthService {
     }
 
     public void initiateForgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        user.setResetToken(UUID.randomUUID().toString());
-        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
-        userRepository.save(user);
-        emailService.sendPasswordResetMail(email, user.getResetToken());
+        userRepository.findByEmail(email).ifPresent(user -> {
+            user.setResetToken(UUID.randomUUID().toString());
+            user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+            userRepository.save(user);
+            try {
+                emailService.sendPasswordResetMail(email, user.getResetToken());
+            } catch (Exception e) {
+                System.err.println("Failed to send reset email: " + e.getMessage());
+            }
+        });
     }
 
     public void resetPassword(String token, String newPassword) {

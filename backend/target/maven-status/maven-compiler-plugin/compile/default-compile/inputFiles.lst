@@ -6,9 +6,11 @@
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/controller/HomeController.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/controller/QueryController.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/dto/AuthResponse.java
+/Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/dto/ForgotPasswordRequest.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/dto/LoginRequest.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/dto/QueryBuilderRequest.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/dto/RegisterRequest.java
+/Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/dto/ResetPasswordRequest.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/dto/SavedQueryRequest.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/entity/ColumnMetadata.java
 /Users/ishananand/Sql-query-builder/backend/src/main/java/com/smartquerybuilder/entity/RelationshipMetadata.java
