@@ -52,6 +52,93 @@ export default function QueryBuilderPage() {
     });
   };
 
+  const addWhere = () => {
+    setIr({
+      ...ir,
+      where: [...(ir.where || []), { logic: "AND", field: "", operator: "=", value: "" }]
+    });
+  };
+
+  const removeWhere = (idx) => {
+    setIr({ ...ir, where: (ir.where || []).filter((_, i) => i !== idx) });
+  };
+
+  const updateWhereField = (idx, value) => {
+    const next = [...(ir.where || [])];
+    next[idx] = { ...next[idx], field: value };
+    setIr({ ...ir, where: next });
+  };
+
+  const updateWhereOperator = (idx, value) => {
+    const next = [...(ir.where || [])];
+    next[idx] = { ...next[idx], operator: value };
+    setIr({ ...ir, where: next });
+  };
+
+  const updateWhereValue = (idx, value) => {
+    const next = [...(ir.where || [])];
+    next[idx] = { ...next[idx], value: value };
+    setIr({ ...ir, where: next });
+  };
+
+  const updateWhereLogic = (idx, value) => {
+    const next = [...(ir.where || [])];
+    next[idx] = { ...next[idx], logic: value };
+    setIr({ ...ir, where: next });
+  };
+
+  const addHaving = () => {
+    setIr({
+      ...ir,
+      having: [...(ir.having || []), { logic: "AND", field: "", operator: "=", value: "" }]
+    });
+  };
+
+  const removeHaving = (idx) => {
+    setIr({ ...ir, having: (ir.having || []).filter((_, i) => i !== idx) });
+  };
+
+  const updateHavingField = (idx, value) => {
+    const next = [...(ir.having || [])];
+    next[idx] = { ...next[idx], field: value };
+    setIr({ ...ir, having: next });
+  };
+
+  const updateHavingOperator = (idx, value) => {
+    const next = [...(ir.having || [])];
+    next[idx] = { ...next[idx], operator: value };
+    setIr({ ...ir, having: next });
+  };
+
+  const updateHavingValue = (idx, value) => {
+    const next = [...(ir.having || [])];
+    next[idx] = { ...next[idx], value: value };
+    setIr({ ...ir, having: next });
+  };
+
+  const addOrderBy = () => {
+    setIr({
+      ...ir,
+      orderBy: [...(ir.orderBy || []), { field: "", direction: "ASC" }]
+    });
+  };
+
+  const removeOrderBy = (idx) => {
+    setIr({ ...ir, orderBy: (ir.orderBy || []).filter((_, i) => i !== idx) });
+  };
+
+  const updateOrderByField = (idx, value) => {
+    const next = [...(ir.orderBy || [])];
+    next[idx] = { ...next[idx], field: value };
+    setIr({ ...ir, orderBy: next });
+  };
+
+  const updateOrderByDirection = (idx, value) => {
+    const next = [...(ir.orderBy || [])];
+    next[idx] = { ...next[idx], direction: value };
+    setIr({ ...ir, orderBy: next });
+  };
+
   const execute = async () => {
     try {
       // Parse valuesText (key=value, key2=value2) into values object
@@ -78,7 +165,10 @@ export default function QueryBuilderPage() {
           if (j.type.toUpperCase() === "CROSS") return true;
           return Boolean(j.on);
         });
-      const payload = { ...ir, values, select: cleanSelect, joins };
+      const where = (ir.where || []).filter(cond => cond.field && cond.value);
+      const having = (ir.having || []).filter(cond => cond.field && cond.value);
+      const orderBy = (ir.orderBy || []).filter(o => o.field);
+      const payload = { ...ir, values, select: cleanSelect, joins, where, having, orderBy };
       const { data } = await api.post("/queries/execute", payload);
       dispatch(setLatestResult(data));
     } catch (err) {
@@ -113,12 +203,12 @@ export default function QueryBuilderPage() {
 
             {ir.type === "SELECT" && (
               <>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Target Columns" value={ir.select.join(",")}
                     onChange={(e) => setIr({ ...ir, select: e.target.value.split(",") })}
                     placeholder="* (for all columns)" />
                 </Grid>
-                <Grid item xs={12} md={2}>
+                <Grid item xs={12} md={6}>
                   <TextField select fullWidth label="Add Aggregate Function" value={selectedAgg} onChange={(e) => setSelectedAgg(e.target.value)}>
                     <MenuItem value="">Select Aggregate</MenuItem>
                     <MenuItem value="COUNT()">COUNT()</MenuItem>
@@ -128,8 +218,8 @@ export default function QueryBuilderPage() {
                     <MenuItem value="MAX()">MAX()</MenuItem>
                   </TextField>
                 </Grid>
-                <Grid item xs={12} md={1}>
-                  <Button variant="outlined" fullWidth onClick={() => {
+                <Grid item xs={12} md={2} sx={{ display: "flex", alignItems: "center" }}>
+                  <Button variant="contained" color="primary" fullWidth size="large" sx={{ minHeight: 56, borderRadius: 3, textTransform: "none" }} onClick={() => {
                     if (selectedAgg) {
                       const current = ir.select.join(",");
                       const newSelect = current ? current + "," + selectedAgg : selectedAgg;
@@ -141,15 +231,15 @@ export default function QueryBuilderPage() {
               </>
             )}
 
-            <Grid item xs={12} md={ir.type === "SELECT" ? 3 : 9}>
+            <Grid item xs={12} md={ir.type === "SELECT" ? 12 : 9}>
               <TextField fullWidth label="FROM Table" value={ir.from} 
                 onChange={(e) => setIr({ ...ir, from: e.target.value })} 
                 placeholder="e.g. users" />
             </Grid>
 
             {ir.type === "SELECT" && (
-              <Grid item xs={12}>
-                <Box sx={{ p: 2, bgcolor: "#e8f4fd", borderRadius: 2, border: "1px dashed #64b5f6" }}>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ p: 2, bgcolor: "#e8f4fd", borderRadius: 2, border: "1px dashed #64b5f6", minHeight: 220 }}>
                   <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       JOIN TABLES
@@ -160,12 +250,7 @@ export default function QueryBuilderPage() {
                   </Stack>
                   {(ir.joins || []).length === 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-                      Optional: chain tables with INNER / LEFT / RIGHT / FULL OUTER / CROSS (CROSS has no ON). SQL uses a single
-                      <code style={{ margin: "0 4px" }}>=</code>
-                      for equality; <code style={{ margin: "0 4px" }}>==</code>
-                      from languages like JavaScript is accepted and converted. This database links{" "}
-                      <strong>users</strong> and <strong>roles</strong> directly via <strong>users.role_id</strong>: add a join — table <code>roles</code>, ON{" "}
-                      <code>roles.id = users.role_id</code>.
+                      Add tables to join with the main table. Use aliases for clarity.
                     </Typography>
                   )}
                   {(ir.joins || []).map((join, idx) => (
@@ -220,55 +305,57 @@ export default function QueryBuilderPage() {
 
             {/* WHERE Section */}
             {ir.type !== "INSERT" && (
-              <Grid item xs={12}>
-                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc" }}>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>FILTER (WHERE CLAUSE)</Typography>
-                  <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} md={4}>
-                      <TextField fullWidth label="Database Field" 
-                        onChange={(e) => {
-                          const newWhere = [...(ir.where || [])];
-                          if (newWhere.length === 0) newWhere.push({ field: "", operator: "=", value: "" });
-                          newWhere[0].field = e.target.value;
-                          setIr({ ...ir, where: newWhere });
-                        }}
-                        placeholder="e.g. users.id, u_id or r_name" />
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                      <TextField select fullWidth label="Equality" defaultValue="="
-                        onChange={(e) => {
-                          const newWhere = [...(ir.where || [])];
-                          if (newWhere.length === 0) newWhere.push({ field: "", operator: "=", value: "" });
-                          newWhere[0].operator = e.target.value;
-                          setIr({ ...ir, where: newWhere });
-                        }}>
-                        <MenuItem value="=">Equals (=)</MenuItem>
-                        <MenuItem value=">">Greater Than (&gt;)</MenuItem>
-                        <MenuItem value="<">Less Than (&lt;)</MenuItem>
-                        <MenuItem value=">=">Greater or Equal (&gt;=)</MenuItem>
-                        <MenuItem value="<=">Less or Equal (&lt;=)</MenuItem>
-                        <MenuItem value="LIKE">Matches (LIKE)</MenuItem>
-                      </TextField>
-                    </Grid>
-                    <Grid item xs={12} md={5}>
-                      <TextField fullWidth label="Comparison Value" 
-                        onChange={(e) => {
-                          const newWhere = [...(ir.where || [])];
-                          if (newWhere.length === 0) newWhere.push({ field: "", operator: "=", value: "" });
-                          newWhere[0].value = e.target.value;
-                          setIr({ ...ir, where: newWhere });
-                        }}
-                        placeholder="e.g. admin@example.com" />
-                    </Grid>
-                  </Grid>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc", minHeight: 220 }}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">FILTER (WHERE CLAUSE)</Typography>
+                    <Button size="small" variant="outlined" onClick={addWhere}>+ Add WHERE Condition</Button>
+                  </Stack>
+                  {(ir.where || []).length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                      Add one or more filter conditions and connect them with AND / OR.
+                    </Typography>
+                  ) : (
+                    (ir.where || []).map((cond, idx) => (
+                      <Grid container spacing={2} alignItems="center" key={idx} sx={{ mb: 1 }}>
+                        {idx > 0 && (
+                          <Grid item xs={12} md={1}>
+                            <TextField select fullWidth size="small" value={cond.logic || "AND"} onChange={(e) => updateWhereLogic(idx, e.target.value)}>
+                              <MenuItem value="AND">AND</MenuItem>
+                              <MenuItem value="OR">OR</MenuItem>
+                            </TextField>
+                          </Grid>
+                        )}
+                        <Grid item xs={12} md={idx > 0 ? 3 : 4}>
+                          <TextField fullWidth size="small" label="Field" value={cond.field || ""} onChange={(e) => updateWhereField(idx, e.target.value)} placeholder="e.g. users.id" />
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                          <TextField select fullWidth size="small" label="Operator" value={cond.operator || "="} onChange={(e) => updateWhereOperator(idx, e.target.value)}>
+                            <MenuItem value="=">Equals (=)</MenuItem>
+                            <MenuItem value=">">Greater Than (&gt;)</MenuItem>
+                            <MenuItem value="<">Less Than (&lt;)</MenuItem>
+                            <MenuItem value=">=">Greater or Equal (&gt;=)</MenuItem>
+                            <MenuItem value="<=">Less or Equal (&lt;=)</MenuItem>
+                            <MenuItem value="LIKE">Matches (LIKE)</MenuItem>
+                          </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={idx > 0 ? 4 : 3}>
+                          <TextField fullWidth size="small" label="Value" value={cond.value || ""} onChange={(e) => updateWhereValue(idx, e.target.value)} placeholder="e.g. admin@example.com" />
+                        </Grid>
+                        <Grid item xs={12} md={1} sx={{ display: "flex", alignItems: "center" }}>
+                          <Button size="small" color="error" onClick={() => removeWhere(idx)}>Remove</Button>
+                        </Grid>
+                      </Grid>
+                    ))
+                  )}
                 </Box>
               </Grid>
             )}
 
             {/* GROUP BY Section */}
             {ir.type === "SELECT" && (
-              <Grid item xs={12}>
-                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc" }}>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc", minHeight: 160 }}>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>GROUP BY CLAUSE</Typography>
                   <TextField fullWidth label="Group By Fields (comma separated)" 
                     value={(ir.groupBy || []).join(", ")}
@@ -283,47 +370,49 @@ export default function QueryBuilderPage() {
 
             {/* HAVING Section */}
             {ir.type === "SELECT" && (
-              <Grid item xs={12}>
-                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc" }}>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>FILTER AGGREGATES (HAVING CLAUSE)</Typography>
-                  <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} md={4}>
-                      <TextField fullWidth label="Aggregate Field" 
-                        onChange={(e) => {
-                          const newHaving = [...(ir.having || [])];
-                          if (newHaving.length === 0) newHaving.push({ field: "", operator: "=", value: "" });
-                          newHaving[0].field = e.target.value;
-                          setIr({ ...ir, having: newHaving });
-                        }}
-                        placeholder="e.g. COUNT(*)" />
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                      <TextField select fullWidth label="Equality" defaultValue="="
-                        onChange={(e) => {
-                          const newHaving = [...(ir.having || [])];
-                          if (newHaving.length === 0) newHaving.push({ field: "", operator: "=", value: "" });
-                          newHaving[0].operator = e.target.value;
-                          setIr({ ...ir, having: newHaving });
-                        }}>
-                        <MenuItem value="=">Equals (=)</MenuItem>
-                        <MenuItem value=">">Greater Than (&gt;)</MenuItem>
-                        <MenuItem value="<">Less Than (&lt;)</MenuItem>
-                        <MenuItem value=">=">Greater or Equal (&gt;=)</MenuItem>
-                        <MenuItem value="<=">Less or Equal (&lt;=)</MenuItem>
-                        <MenuItem value="LIKE">Matches (LIKE)</MenuItem>
-                      </TextField>
-                    </Grid>
-                    <Grid item xs={12} md={5}>
-                      <TextField fullWidth label="Comparison Value" 
-                        onChange={(e) => {
-                          const newHaving = [...(ir.having || [])];
-                          if (newHaving.length === 0) newHaving.push({ field: "", operator: "=", value: "" });
-                          newHaving[0].value = e.target.value;
-                          setIr({ ...ir, having: newHaving });
-                        }}
-                        placeholder="e.g. 5" />
-                    </Grid>
-                  </Grid>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc", minHeight: 220 }}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">FILTER AGGREGATES (HAVING CLAUSE)</Typography>
+                    <Button size="small" variant="outlined" onClick={addHaving}>+ Add HAVING Condition</Button>
+                  </Stack>
+                  {(ir.having || []).length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                      Add aggregate filters and combine them with AND / OR.
+                    </Typography>
+                  ) : (
+                    (ir.having || []).map((cond, idx) => (
+                      <Grid container spacing={2} alignItems="center" key={idx} sx={{ mb: 1 }}>
+                        {idx > 0 && (
+                          <Grid item xs={12} md={1}>
+                            <TextField select fullWidth size="small" value={cond.logic || "AND"} onChange={(e) => updateHavingLogic(idx, e.target.value)}>
+                              <MenuItem value="AND">AND</MenuItem>
+                              <MenuItem value="OR">OR</MenuItem>
+                            </TextField>
+                          </Grid>
+                        )}
+                        <Grid item xs={12} md={idx > 0 ? 3 : 4}>
+                          <TextField fullWidth size="small" label="Field" value={cond.field || ""} onChange={(e) => updateHavingField(idx, e.target.value)} placeholder="e.g. COUNT(*)" />
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                          <TextField select fullWidth size="small" label="Operator" value={cond.operator || "="} onChange={(e) => updateHavingOperator(idx, e.target.value)}>
+                            <MenuItem value="=">Equals (=)</MenuItem>
+                            <MenuItem value=">">Greater Than (&gt;)</MenuItem>
+                            <MenuItem value="<">Less Than (&lt;)</MenuItem>
+                            <MenuItem value=">=">Greater or Equal (&gt;=)</MenuItem>
+                            <MenuItem value="<=">Less or Equal (&lt;=)</MenuItem>
+                            <MenuItem value="LIKE">Matches (LIKE)</MenuItem>
+                          </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={idx > 0 ? 4 : 3}>
+                          <TextField fullWidth size="small" label="Value" value={cond.value || ""} onChange={(e) => updateHavingValue(idx, e.target.value)} placeholder="e.g. 5" />
+                        </Grid>
+                        <Grid item xs={12} md={1} sx={{ display: "flex", alignItems: "center" }}>
+                          <Button size="small" color="error" onClick={() => removeHaving(idx)}>Remove</Button>
+                        </Grid>
+                      </Grid>
+                    ))
+                  )}
                 </Box>
               </Grid>
             )}
@@ -340,17 +429,30 @@ export default function QueryBuilderPage() {
             {/* Pagination & Sorting */}
             {ir.type === "SELECT" && (
               <>
-                <Grid item xs={12} md={3}>
-                  <TextField select fullWidth label="Order By" value={ir.orderBy[0]?.direction ?? "ASC"}
-                    onChange={(e) => {
-                      const field = `${getTableAlias(ir.from)}.id`;
-                      setIr({ ...ir, orderBy: [{ field, direction: e.target.value }] });
-                    }}>
-                    <MenuItem value="ASC">Oldest First (ASC)</MenuItem>
-                    <MenuItem value="DESC">Newest First (DESC)</MenuItem>
-                  </TextField>
+                {/* Order By */}
+                {(ir.orderBy || []).map((o, idx) => (
+                  <Grid item xs={12} key={idx}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <TextField fullWidth label={`Order By Field ${idx + 1}`} value={o.field}
+                        onChange={(e) => updateOrderByField(idx, e.target.value)}
+                        placeholder="e.g. u.id, r.name" />
+                      <TextField select fullWidth label="Direction" value={o.direction}
+                        onChange={(e) => updateOrderByDirection(idx, e.target.value)}
+                        sx={{ minWidth: 120 }}>
+                        <MenuItem value="ASC">ASC</MenuItem>
+                        <MenuItem value="DESC">DESC</MenuItem>
+                      </TextField>
+                      <Button variant="outlined" color="error" onClick={() => removeOrderBy(idx)} sx={{ minWidth: 80 }}>Remove</Button>
+                    </Stack>
+                  </Grid>
+                ))}
+                <Grid item xs={12} sx={{ mt: 2 }}>
+                  <Button variant="contained" color="primary" fullWidth onClick={addOrderBy} sx={{ borderRadius: 3, py: 1.25, textTransform: "none" }}>
+                    + Add Order By
+                  </Button>
                 </Grid>
-                <Grid item xs={12} md={3}>
+
+                <Grid item xs={12} md={4}>
                   <TextField fullWidth type="number" label="Max Results (Limit)" value={ir.limit}
                     onChange={(e) => setIr({ ...ir, limit: Number(e.target.value) })} />
                 </Grid>
@@ -365,7 +467,7 @@ export default function QueryBuilderPage() {
             )}
           </Grid>
 
-          <Stack direction="row" spacing={2} sx={{ mt: 5 }}>
+          <Stack direction="row" spacing={2} sx={{ mt: 5, justifyContent: "center" }}>
             <Button variant="contained" size="large" onClick={execute} sx={{ py: 1.5, px: 6, borderRadius: 3, fontWeight: "bold" }}>⚡ EXECUTE QUERY</Button>
             <Button variant="outlined" size="large" onClick={() => { setIr(defaultIr); setValuesText(""); }} sx={{ py: 1.5, px: 6, borderRadius: 3 }}>RESET</Button>
           </Stack>

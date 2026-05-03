@@ -244,6 +244,11 @@ public class QueryBuilderService {
         if (conditions == null || conditions.isEmpty()) return;
         sql.append(prefix);
         for (int i = 0; i < conditions.size(); i++) {
+            if (i > 0) {
+                String logic = String.valueOf(conditions.get(i).getOrDefault("logic", "AND")).toUpperCase();
+                if (!"AND".equals(logic) && !"OR".equals(logic)) logic = "AND";
+                sql.append(" ").append(logic).append(" ");
+            }
             Map<String, Object> c = conditions.get(i);
             String field = normalizeField(String.valueOf(c.get("field")), tableAliases);
             String operator = String.valueOf(c.get("operator")).toUpperCase();
@@ -252,7 +257,6 @@ public class QueryBuilderService {
                 throw new IllegalArgumentException("Unsafe operator: " + operator);
             }
             sql.append(field).append(" ").append(operator).append(" ?");
-            if (i < conditions.size() - 1) sql.append(" AND ");
         }
     }
 
@@ -353,9 +357,15 @@ public class QueryBuilderService {
     private void appendOrderBy(StringBuilder sql, List<Map<String, Object>> orderBy, Map<String, String> tableAliases) {
         if (orderBy == null || orderBy.isEmpty()) return;
         sql.append(" ORDER BY ");
+        String mainTable = tableAliases.entrySet().iterator().next().getKey(); // Assuming first is main
+        String mainAlias = tableAliases.get(mainTable);
         for (int i = 0; i < orderBy.size(); i++) {
             Map<String, Object> o = orderBy.get(i);
-            String field = normalizeField(String.valueOf(o.get("field")), tableAliases);
+            String field = String.valueOf(o.get("field"));
+            if (!field.contains(".")) {
+                field = mainAlias + "." + field;
+            }
+            field = normalizeField(field, tableAliases);
             String direction = String.valueOf(o.getOrDefault("direction", "ASC")).toUpperCase();
             validateIdentifier(field);
             sql.append(field).append(" ").append(direction.equals("DESC") ? "DESC" : "ASC");

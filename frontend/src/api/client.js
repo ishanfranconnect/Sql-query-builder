@@ -17,8 +17,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 403 || error.response?.status === 401) {
       console.error("Authentication failed. Please log in again.");
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      // Removed redirect to show error in UI instead
     }
     return Promise.reject(error);
   }

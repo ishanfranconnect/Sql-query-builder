@@ -42,7 +42,28 @@ public class QueryExecutionService {
         for (List<Map<String, Object>> group : conditionGroups) {
             if (group == null) continue;
             for (Map<String, Object> condition : group) {
-                params.add(condition.get("value"));
+                Object value = condition.get("value");
+                if (value instanceof String) {
+                    String str = (String) value;
+                    if ("true".equalsIgnoreCase(str)) {
+                        params.add(true);
+                    } else if ("false".equalsIgnoreCase(str)) {
+                        params.add(false);
+                    } else {
+                        // try parse as number
+                        try {
+                            params.add(Integer.parseInt(str));
+                        } catch (NumberFormatException e) {
+                            try {
+                                params.add(Double.parseDouble(str));
+                            } catch (NumberFormatException e2) {
+                                params.add(str);
+                            }
+                        }
+                    }
+                } else {
+                    params.add(value);
+                }
             }
         }
         return params;
