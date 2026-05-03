@@ -1,8 +1,12 @@
 package com.smartquerybuilder.service;
 
 import com.smartquerybuilder.dto.QueryBuilderRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,6 +14,17 @@ import java.util.regex.Pattern;
 
 @Service
 public class QueryBuilderService {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    public List<String> getColumns(String table) {
+        return jdbcTemplate.queryForList("SELECT column_name FROM information_schema.columns WHERE table_name = ? AND table_schema = 'smart_query_builder' ORDER BY ordinal_position", String.class, table);
+    }
+
+    private String generateAlias(String table) {
+        return table.substring(0, 1).toLowerCase();
+    }
 
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[a-zA-Z_*][a-zA-Z0-9_\\.\\s\\(\\)\\,*]*$", Pattern.CASE_INSENSITIVE);
     /** Operators ordered longest-first; {@code ==} is accepted then normalized to {@code =} for SQL. */
@@ -42,20 +57,55 @@ public class QueryBuilderService {
         StringBuilder sql = new StringBuilder("SELECT ");
         if (Boolean.TRUE.equals(ir.distinct())) sql.append("DISTINCT ");
         
+        // Handle table aliases for joins to avoid column conflicts
+        Map<String, String> tableAliases = new HashMap<>();
+        List<String> tables = new ArrayList<>();
+        tables.add(ir.from());
+        tableAliases.put(ir.from(), generateAlias(ir.from()));
+        int aliasIndex = 1;
+        if (ir.joins() != null) {
+            for (Map<String, Object> join : ir.joins()) {
+                String table = String.valueOf(join.get("table")).trim();
+                tables.add(table);
+                String alias = generateAlias(table);
+                // Handle conflicts
+                while (tableAliases.containsValue(alias)) {
+                    alias = generateAlias(table) + aliasIndex;
+                    aliasIndex++;
+                }
+                tableAliases.put(table, alias);
+            }
+        }
+        
         if (ir.select() == null || ir.select().isEmpty()) {
             sql.append("*");
+        } else if (ir.select().size() == 1 && "*".equals(ir.select().get(0)) && !ir.joins().isEmpty()) {
+            // Use qualified columns with aliases to avoid conflicts
+            List<String> selectParts = new ArrayList<>();
+            for (Map.Entry<String, String> entry : tableAliases.entrySet()) {
+                String table = entry.getKey();
+                String alias = entry.getValue();
+                List<String> columns = getColumns(table);
+                for (String col : columns) {
+                    selectParts.add(alias + "." + col + " AS " + alias + "_" + col);
+                }
+            }
+            sql.append(String.join(", ", selectParts));
         } else {
             ir.select().forEach(this::validateIdentifier);
             sql.append(String.join(", ", ir.select()));
         }
         
         sql.append(" FROM ").append(ir.from());
+        if (tableAliases.containsKey(ir.from())) {
+            sql.append(" ").append(tableAliases.get(ir.from()));
+        }
 
-        appendJoins(sql, ir.joins());
-        appendConditions(sql, " WHERE ", ir.where());
-        appendGroupBy(sql, ir.groupBy());
-        appendConditions(sql, " HAVING ", ir.having());
-        appendOrderBy(sql, ir.orderBy());
+        appendJoins(sql, ir.joins(), tableAliases);
+        appendConditions(sql, " WHERE ", ir.where(), tableAliases);
+        appendGroupBy(sql, ir.groupBy(), tableAliases);
+        appendConditions(sql, " HAVING ", ir.having(), tableAliases);
+        appendOrderBy(sql, ir.orderBy(), tableAliases);
         if (ir.limit() != null && ir.limit() > 0) sql.append(" LIMIT ").append(ir.limit());
         if (ir.offset() != null && ir.offset() >= 0) sql.append(" OFFSET ").append(ir.offset());
         return sql.toString();
@@ -88,13 +138,13 @@ public class QueryBuilderService {
             if (i < ir.values().size() - 1) sql.append(", ");
             i++;
         }
-        appendConditions(sql, " WHERE ", ir.where());
+        appendConditions(sql, " WHERE ", ir.where(), Map.of());
         return sql.toString();
     }
 
     private String generateDeleteSql(QueryBuilderRequest ir) {
         StringBuilder sql = new StringBuilder("DELETE FROM ").append(ir.from());
-        appendConditions(sql, " WHERE ", ir.where());
+        appendConditions(sql, " WHERE ", ir.where(), Map.of());
         return sql.toString();
     }
 
@@ -104,7 +154,7 @@ public class QueryBuilderService {
         }
     }
 
-    private void appendJoins(StringBuilder sql, List<Map<String, Object>> joins) {
+    private void appendJoins(StringBuilder sql, List<Map<String, Object>> joins, Map<String, String> tableAliases) {
         if (joins == null) return;
         for (Map<String, Object> join : joins) {
             if (join == null) continue;
@@ -125,6 +175,9 @@ public class QueryBuilderService {
 
             if ("CROSS".equals(type)) {
                 sql.append(" CROSS JOIN ").append(table);
+                if (tableAliases.containsKey(table)) {
+                    sql.append(" ").append(tableAliases.get(table));
+                }
                 continue;
             }
 
@@ -136,8 +189,16 @@ public class QueryBuilderService {
             if (on.isEmpty() || "null".equalsIgnoreCase(on)) {
                 throw new IllegalArgumentException(type + " JOIN requires an ON clause");
             }
+            // Replace table names with aliases in ON clause
+            for (Map.Entry<String, String> entry : tableAliases.entrySet()) {
+                on = on.replaceAll("\\b" + Pattern.quote(entry.getKey()) + "\\.", entry.getValue() + ".");
+            }
             on = normalizeJoinOnAndValidate(on);
-            sql.append(" ").append(type).append(" JOIN ").append(table).append(" ON ").append(on);
+            sql.append(" ").append(type).append(" JOIN ").append(table);
+            if (tableAliases.containsKey(table)) {
+                sql.append(" ").append(tableAliases.get(table));
+            }
+            sql.append(" ON ").append(on);
         }
     }
 
@@ -155,12 +216,36 @@ public class QueryBuilderService {
         return n;
     }
 
-    private void appendConditions(StringBuilder sql, String prefix, List<Map<String, Object>> conditions) {
+    private String normalizeField(String field, Map<String, String> tableAliases) {
+        if (field == null) return null;
+        String trimmed = field.trim();
+        int dotIndex = trimmed.indexOf('.');
+        if (dotIndex > 0) {
+            String left = trimmed.substring(0, dotIndex);
+            String right = trimmed.substring(dotIndex + 1);
+            if (tableAliases.containsKey(left)) {
+                return tableAliases.get(left) + "." + right;
+            }
+        }
+
+        int underscoreIndex = trimmed.indexOf('_');
+        if (underscoreIndex > 0) {
+            String alias = trimmed.substring(0, underscoreIndex);
+            String column = trimmed.substring(underscoreIndex + 1);
+            if (tableAliases.containsValue(alias)) {
+                return alias + "." + column;
+            }
+        }
+
+        return trimmed;
+    }
+
+    private void appendConditions(StringBuilder sql, String prefix, List<Map<String, Object>> conditions, Map<String, String> tableAliases) {
         if (conditions == null || conditions.isEmpty()) return;
         sql.append(prefix);
         for (int i = 0; i < conditions.size(); i++) {
             Map<String, Object> c = conditions.get(i);
-            String field = String.valueOf(c.get("field"));
+            String field = normalizeField(String.valueOf(c.get("field")), tableAliases);
             String operator = String.valueOf(c.get("operator")).toUpperCase();
             validateIdentifier(field);
             if (!SAFE_OPERATORS.contains(operator)) {
@@ -171,18 +256,23 @@ public class QueryBuilderService {
         }
     }
 
-    private void appendGroupBy(StringBuilder sql, List<String> groupBy) {
+    private void appendGroupBy(StringBuilder sql, List<String> groupBy, Map<String, String> tableAliases) {
         if (groupBy == null || groupBy.isEmpty()) return;
-        groupBy.forEach(this::validateIdentifier);
-        sql.append(" GROUP BY ").append(String.join(", ", groupBy));
+        List<String> normalized = new ArrayList<>();
+        for (String field : groupBy) {
+            String normalizedField = normalizeField(field, tableAliases);
+            validateIdentifier(normalizedField);
+            normalized.add(normalizedField);
+        }
+        sql.append(" GROUP BY ").append(String.join(", ", normalized));
     }
 
-    private void appendOrderBy(StringBuilder sql, List<Map<String, Object>> orderBy) {
+    private void appendOrderBy(StringBuilder sql, List<Map<String, Object>> orderBy, Map<String, String> tableAliases) {
         if (orderBy == null || orderBy.isEmpty()) return;
         sql.append(" ORDER BY ");
         for (int i = 0; i < orderBy.size(); i++) {
             Map<String, Object> o = orderBy.get(i);
-            String field = String.valueOf(o.get("field"));
+            String field = normalizeField(String.valueOf(o.get("field")), tableAliases);
             String direction = String.valueOf(o.getOrDefault("direction", "ASC")).toUpperCase();
             validateIdentifier(field);
             sql.append(field).append(" ").append(direction.equals("DESC") ? "DESC" : "ASC");

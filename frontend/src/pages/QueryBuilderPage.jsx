@@ -19,9 +19,16 @@ function normalizeJoinOn(on) {
   return n;
 }
 
+function getTableAlias(table) {
+  if (!table) return "u";
+  const cleaned = table.trim();
+  return cleaned ? cleaned[0].toLowerCase() : "u";
+}
+
 export default function QueryBuilderPage() {
   const [ir, setIr] = useState(defaultIr);
   const [valuesText, setValuesText] = useState("");
+  const [selectedAgg, setSelectedAgg] = useState("");
   const dispatch = useDispatch();
   const result = useSelector((state) => state.query.latestResult);
 
@@ -105,14 +112,36 @@ export default function QueryBuilderPage() {
             </Grid>
 
             {ir.type === "SELECT" && (
-              <Grid item xs={12} md={4}>
-                <TextField fullWidth label="Target Columns" value={ir.select.join(",")}
-                  onChange={(e) => setIr({ ...ir, select: e.target.value.split(",") })}
-                  placeholder="* (for all columns)" />
-              </Grid>
+              <>
+                <Grid item xs={12} md={3}>
+                  <TextField fullWidth label="Target Columns" value={ir.select.join(",")}
+                    onChange={(e) => setIr({ ...ir, select: e.target.value.split(",") })}
+                    placeholder="* (for all columns)" />
+                </Grid>
+                <Grid item xs={12} md={2}>
+                  <TextField select fullWidth label="Add Aggregate Function" value={selectedAgg} onChange={(e) => setSelectedAgg(e.target.value)}>
+                    <MenuItem value="">Select Aggregate</MenuItem>
+                    <MenuItem value="COUNT()">COUNT()</MenuItem>
+                    <MenuItem value="SUM()">SUM()</MenuItem>
+                    <MenuItem value="AVG()">AVG()</MenuItem>
+                    <MenuItem value="MIN()">MIN()</MenuItem>
+                    <MenuItem value="MAX()">MAX()</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={1}>
+                  <Button variant="outlined" fullWidth onClick={() => {
+                    if (selectedAgg) {
+                      const current = ir.select.join(",");
+                      const newSelect = current ? current + "," + selectedAgg : selectedAgg;
+                      setIr({ ...ir, select: newSelect.split(",") });
+                      setSelectedAgg("");
+                    }
+                  }}>Add</Button>
+                </Grid>
+              </>
             )}
 
-            <Grid item xs={12} md={ir.type === "SELECT" ? 5 : 9}>
+            <Grid item xs={12} md={ir.type === "SELECT" ? 3 : 9}>
               <TextField fullWidth label="FROM Table" value={ir.from} 
                 onChange={(e) => setIr({ ...ir, from: e.target.value })} 
                 placeholder="e.g. users" />
@@ -121,7 +150,7 @@ export default function QueryBuilderPage() {
             {ir.type === "SELECT" && (
               <Grid item xs={12}>
                 <Box sx={{ p: 2, bgcolor: "#e8f4fd", borderRadius: 2, border: "1px dashed #64b5f6" }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       JOIN TABLES
                     </Typography>
@@ -203,7 +232,7 @@ export default function QueryBuilderPage() {
                           newWhere[0].field = e.target.value;
                           setIr({ ...ir, where: newWhere });
                         }}
-                        placeholder="e.g. email" />
+                        placeholder="e.g. users.id, u_id or r_name" />
                     </Grid>
                     <Grid item xs={12} md={3}>
                       <TextField select fullWidth label="Equality" defaultValue="="
@@ -236,6 +265,69 @@ export default function QueryBuilderPage() {
               </Grid>
             )}
 
+            {/* GROUP BY Section */}
+            {ir.type === "SELECT" && (
+              <Grid item xs={12}>
+                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc" }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>GROUP BY CLAUSE</Typography>
+                  <TextField fullWidth label="Group By Fields (comma separated)" 
+                    value={(ir.groupBy || []).join(", ")}
+                    onChange={(e) => {
+                      const fields = e.target.value.split(",").map(f => f.trim()).filter(Boolean);
+                      setIr({ ...ir, groupBy: fields });
+                    }}
+                    placeholder="e.g. role, status" />
+                </Box>
+              </Grid>
+            )}
+
+            {/* HAVING Section */}
+            {ir.type === "SELECT" && (
+              <Grid item xs={12}>
+                <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, border: "1px dashed #ccc" }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>FILTER AGGREGATES (HAVING CLAUSE)</Typography>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} md={4}>
+                      <TextField fullWidth label="Aggregate Field" 
+                        onChange={(e) => {
+                          const newHaving = [...(ir.having || [])];
+                          if (newHaving.length === 0) newHaving.push({ field: "", operator: "=", value: "" });
+                          newHaving[0].field = e.target.value;
+                          setIr({ ...ir, having: newHaving });
+                        }}
+                        placeholder="e.g. COUNT(*)" />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <TextField select fullWidth label="Equality" defaultValue="="
+                        onChange={(e) => {
+                          const newHaving = [...(ir.having || [])];
+                          if (newHaving.length === 0) newHaving.push({ field: "", operator: "=", value: "" });
+                          newHaving[0].operator = e.target.value;
+                          setIr({ ...ir, having: newHaving });
+                        }}>
+                        <MenuItem value="=">Equals (=)</MenuItem>
+                        <MenuItem value=">">Greater Than (&gt;)</MenuItem>
+                        <MenuItem value="<">Less Than (&lt;)</MenuItem>
+                        <MenuItem value=">=">Greater or Equal (&gt;=)</MenuItem>
+                        <MenuItem value="<=">Less or Equal (&lt;=)</MenuItem>
+                        <MenuItem value="LIKE">Matches (LIKE)</MenuItem>
+                      </TextField>
+                    </Grid>
+                    <Grid item xs={12} md={5}>
+                      <TextField fullWidth label="Comparison Value" 
+                        onChange={(e) => {
+                          const newHaving = [...(ir.having || [])];
+                          if (newHaving.length === 0) newHaving.push({ field: "", operator: "=", value: "" });
+                          newHaving[0].value = e.target.value;
+                          setIr({ ...ir, having: newHaving });
+                        }}
+                        placeholder="e.g. 5" />
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Grid>
+            )}
+
             {/* Values for INSERT/UPDATE */}
             {(ir.type === "INSERT" || ir.type === "UPDATE") && (
               <Grid item xs={12}>
@@ -251,8 +343,7 @@ export default function QueryBuilderPage() {
                 <Grid item xs={12} md={3}>
                   <TextField select fullWidth label="Order By" value={ir.orderBy[0]?.direction ?? "ASC"}
                     onChange={(e) => {
-                      const cleanSelect = ir.select.map(v => v.trim()).filter(Boolean);
-                      const field = (cleanSelect[0] && cleanSelect[0] !== "*") ? cleanSelect[0] : "id";
+                      const field = `${getTableAlias(ir.from)}.id`;
                       setIr({ ...ir, orderBy: [{ field, direction: e.target.value }] });
                     }}>
                     <MenuItem value="ASC">Oldest First (ASC)</MenuItem>
