@@ -10,11 +10,40 @@ const defaultIr = {
   type: "SELECT", select: ["*"], from: "", values: {}, joins: [], where: [], groupBy: [], having: [], orderBy: [], limit: 50, offset: 0, distinct: false
 };
 
+/** SQL uses `=`; normalize JS-style `==` before sending joins to the API. */
+function normalizeJoinOn(on) {
+  let n = on.trim();
+  while (n.includes("==")) {
+    n = n.replaceAll("==", "=");
+  }
+  return n;
+}
+
 export default function QueryBuilderPage() {
   const [ir, setIr] = useState(defaultIr);
   const [valuesText, setValuesText] = useState("");
   const dispatch = useDispatch();
   const result = useSelector((state) => state.query.latestResult);
+
+  const addJoin = () => {
+    setIr({
+      ...ir,
+      joins: [...(ir.joins || []), { type: "INNER", table: "", on: "" }]
+    });
+  };
+
+  const updateJoin = (index, field, value) => {
+    const next = [...(ir.joins || [])];
+    next[index] = { ...next[index], [field]: value };
+    setIr({ ...ir, joins: next });
+  };
+
+  const removeJoin = (index) => {
+    setIr({
+      ...ir,
+      joins: (ir.joins || []).filter((_, i) => i !== index)
+    });
+  };
 
   const execute = async () => {
     try {
@@ -29,7 +58,20 @@ export default function QueryBuilderPage() {
         }
       });
 
-      const payload = { ...ir, values };
+      const cleanSelect = ir.select.map(v => v.trim()).filter(Boolean);
+      if (cleanSelect.length === 0) cleanSelect.push("*");
+      const joins = (ir.joins || [])
+        .map((j) => ({
+          type: (j.type || "INNER").trim(),
+          table: (j.table || "").trim(),
+          on: normalizeJoinOn(j.on || "")
+        }))
+        .filter((j) => {
+          if (!j.table) return false;
+          if (j.type.toUpperCase() === "CROSS") return true;
+          return Boolean(j.on);
+        });
+      const payload = { ...ir, values, select: cleanSelect, joins };
       const { data } = await api.post("/queries/execute", payload);
       dispatch(setLatestResult(data));
     } catch (err) {
@@ -64,8 +106,8 @@ export default function QueryBuilderPage() {
 
             {ir.type === "SELECT" && (
               <Grid item xs={12} md={4}>
-                <TextField fullWidth label="Target Columns" value={ir.select.join(", ")}
-                  onChange={(e) => setIr({ ...ir, select: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })}
+                <TextField fullWidth label="Target Columns" value={ir.select.join(",")}
+                  onChange={(e) => setIr({ ...ir, select: e.target.value.split(",") })}
                   placeholder="* (for all columns)" />
               </Grid>
             )}
@@ -75,6 +117,77 @@ export default function QueryBuilderPage() {
                 onChange={(e) => setIr({ ...ir, from: e.target.value })} 
                 placeholder="e.g. users" />
             </Grid>
+
+            {ir.type === "SELECT" && (
+              <Grid item xs={12}>
+                <Box sx={{ p: 2, bgcolor: "#e8f4fd", borderRadius: 2, border: "1px dashed #64b5f6" }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      JOIN TABLES
+                    </Typography>
+                    <Button size="small" variant="outlined" onClick={addJoin}>
+                      + Add join
+                    </Button>
+                  </Stack>
+                  {(ir.joins || []).length === 0 && (
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                      Optional: chain tables with INNER / LEFT / RIGHT / FULL OUTER / CROSS (CROSS has no ON). SQL uses a single
+                      <code style={{ margin: "0 4px" }}>=</code>
+                      for equality; <code style={{ margin: "0 4px" }}>==</code>
+                      from languages like JavaScript is accepted and converted. This database links{" "}
+                      <strong>users</strong> and <strong>roles</strong> directly via <strong>users.role_id</strong>: add a join — table <code>roles</code>, ON{" "}
+                      <code>roles.id = users.role_id</code>.
+                    </Typography>
+                  )}
+                  {(ir.joins || []).map((join, idx) => (
+                    <Grid container spacing={2} alignItems="flex-start" key={idx} sx={{ mb: 2 }}>
+                      <Grid item xs={12} sm={6} md={2}>
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          label="Join type"
+                          value={join.type || "INNER"}
+                          onChange={(e) => updateJoin(idx, "type", e.target.value)}
+                        >
+                          <MenuItem value="INNER">INNER</MenuItem>
+                          <MenuItem value="LEFT">LEFT</MenuItem>
+                          <MenuItem value="RIGHT">RIGHT</MenuItem>
+                          <MenuItem value="FULL OUTER">FULL OUTER</MenuItem>
+                          <MenuItem value="CROSS">CROSS</MenuItem>
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Table (optional alias)"
+                          value={join.table || ""}
+                          onChange={(e) => updateJoin(idx, "table", e.target.value)}
+                          placeholder="e.g. orders o"
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={5}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="ON condition"
+                          value={join.on || ""}
+                          onChange={(e) => updateJoin(idx, "on", e.target.value)}
+                          placeholder={(join.type || "").toUpperCase() === "CROSS" ? "Not used for CROSS" : "e.g. roles.id = users.role_id (single =)"}
+                          disabled={(join.type || "").toUpperCase() === "CROSS"}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={1} sx={{ display: "flex", alignItems: "center" }}>
+                        <Button size="small" color="error" onClick={() => removeJoin(idx)}>
+                          Remove
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  ))}
+                </Box>
+              </Grid>
+            )}
 
             {/* WHERE Section */}
             {ir.type !== "INSERT" && (
@@ -137,7 +250,11 @@ export default function QueryBuilderPage() {
               <>
                 <Grid item xs={12} md={3}>
                   <TextField select fullWidth label="Order By" value={ir.orderBy[0]?.direction ?? "ASC"}
-                    onChange={(e) => setIr({ ...ir, orderBy: [{ field: ir.select[0] || "id", direction: e.target.value }] })}>
+                    onChange={(e) => {
+                      const cleanSelect = ir.select.map(v => v.trim()).filter(Boolean);
+                      const field = (cleanSelect[0] && cleanSelect[0] !== "*") ? cleanSelect[0] : "id";
+                      setIr({ ...ir, orderBy: [{ field, direction: e.target.value }] });
+                    }}>
                     <MenuItem value="ASC">Oldest First (ASC)</MenuItem>
                     <MenuItem value="DESC">Newest First (DESC)</MenuItem>
                   </TextField>

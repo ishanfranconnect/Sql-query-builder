@@ -12,6 +12,14 @@ import java.util.regex.Pattern;
 public class QueryBuilderService {
 
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[a-zA-Z_*][a-zA-Z0-9_\\.\\s\\(\\)\\,*]*$", Pattern.CASE_INSENSITIVE);
+    /** Operators ordered longest-first; {@code ==} is accepted then normalized to {@code =} for SQL. */
+    private static final Pattern SAFE_JOIN_ON = Pattern.compile(
+            "^([a-zA-Z0-9_.]+\\s*(<=|>=|<>|==|=|<|>)\\s*[a-zA-Z0-9_.]+)(\\s+AND\\s+[a-zA-Z0-9_.]+\\s*(<=|>=|<>|==|=|<|>)\\s*[a-zA-Z0-9_.]+)*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Set<String> SAFE_JOIN_TYPES = Set.of(
+            "INNER", "LEFT", "RIGHT", "FULL",
+            "LEFT OUTER", "RIGHT OUTER", "FULL OUTER",
+            "CROSS");
     private static final Set<String> SAFE_OPERATORS = Set.of("=", ">", "<", ">=", "<=", "<>", "LIKE", "BETWEEN", "IN");
 
     public String generateSql(QueryBuilderRequest ir) {
@@ -99,12 +107,52 @@ public class QueryBuilderService {
     private void appendJoins(StringBuilder sql, List<Map<String, Object>> joins) {
         if (joins == null) return;
         for (Map<String, Object> join : joins) {
-            String type = String.valueOf(join.getOrDefault("type", "INNER")).toUpperCase();
-            String table = String.valueOf(join.get("table"));
-            String on = String.valueOf(join.get("on"));
+            if (join == null) continue;
+            String rawType = String.valueOf(join.getOrDefault("type", "INNER")).trim();
+            String type = rawType.toUpperCase();
+            if (!SAFE_JOIN_TYPES.contains(type)) {
+                throw new IllegalArgumentException("Unsupported join type: " + rawType);
+            }
+            Object tableObj = join.get("table");
+            if (tableObj == null) {
+                throw new IllegalArgumentException("Join requires a table");
+            }
+            String table = String.valueOf(tableObj).trim();
+            if (table.isEmpty() || "null".equalsIgnoreCase(table)) {
+                throw new IllegalArgumentException("Join requires a table");
+            }
             validateIdentifier(table);
+
+            if ("CROSS".equals(type)) {
+                sql.append(" CROSS JOIN ").append(table);
+                continue;
+            }
+
+            Object onObj = join.get("on");
+            if (onObj == null) {
+                throw new IllegalArgumentException(type + " JOIN requires an ON clause");
+            }
+            String on = String.valueOf(onObj).trim();
+            if (on.isEmpty() || "null".equalsIgnoreCase(on)) {
+                throw new IllegalArgumentException(type + " JOIN requires an ON clause");
+            }
+            on = normalizeJoinOnAndValidate(on);
             sql.append(" ").append(type).append(" JOIN ").append(table).append(" ON ").append(on);
         }
+    }
+
+    /** Maps {@code ==} to SQL {@code =}, then validates the ON expression. */
+    private String normalizeJoinOnAndValidate(String on) {
+        String n = on.trim();
+        while (n.contains("==")) {
+            n = n.replace("==", "=");
+        }
+        if (!SAFE_JOIN_ON.matcher(n).matches()) {
+            throw new IllegalArgumentException(
+                    "Unsafe or invalid JOIN ON (use qualified columns and SQL operators =, <>, <, >, <=, >=; "
+                            + "programming-style == is converted to = automatically; combine conditions with AND)");
+        }
+        return n;
     }
 
     private void appendConditions(StringBuilder sql, String prefix, List<Map<String, Object>> conditions) {

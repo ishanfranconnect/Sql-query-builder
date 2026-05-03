@@ -6,12 +6,30 @@ import api from "../api/client";
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const submit = async () => {
-    await api.post("/auth/register", form);
-    setMessage("Registration successful. Verify your email then login.");
-    setTimeout(() => navigate("/login"), 1200);
+    try {
+      setError("");
+      setMessage("");
+      await api.post("/auth/register", form);
+      setMessage("Registration successful. Verify your email then login.");
+      setTimeout(() => navigate("/login"), 1200);
+    } catch (err) {
+      if (err.response && err.response.data) {
+        const data = err.response.data;
+        if (data.error) {
+          setError(data.error);
+        } else {
+          // Combine field validation errors
+          const errorMessages = Object.values(data).join(", ");
+          setError(errorMessages || "Registration failed.");
+        }
+      } else {
+        setError("Network error or registration failed.");
+      }
+    }
   };
 
   return (
@@ -23,6 +41,7 @@ export default function RegisterPage() {
           <TextField label="Email" onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <TextField label="Password" type="password" onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <Button variant="contained" onClick={submit}>Create Account</Button>
+          {error && <Typography color="error.main">{error}</Typography>}
           {message && <Typography color="success.main">{message}</Typography>}
           <Typography>Already have an account? <Link to="/login">Login</Link></Typography>
         </Stack>

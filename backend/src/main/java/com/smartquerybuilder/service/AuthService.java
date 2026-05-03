@@ -45,7 +45,7 @@ public class AuthService {
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setVerificationToken(UUID.randomUUID().toString());
-        user.getRoles().add(userRole);
+        user.setRole(userRole);
         userRepository.save(user);
         emailService.sendVerificationMail(user.getEmail(), user.getVerificationToken());
     }
@@ -56,7 +56,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
         String token = jwtService.generateToken(user.getEmail());
-        Set<String> roles = user.getRoles().stream().map(r -> r.getName().name()).collect(java.util.stream.Collectors.toSet());
+        Set<String> roles = Set.of(user.getRole().getName().name());
         return new AuthResponse(token, user.getEmail(), roles);
     }
 
