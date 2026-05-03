@@ -103,7 +103,7 @@ public class QueryBuilderService {
 
         appendJoins(sql, ir.joins(), tableAliases);
         appendConditions(sql, " WHERE ", ir.where(), tableAliases);
-        appendGroupBy(sql, ir.groupBy(), tableAliases);
+        appendGroupBy(sql, ir.groupBy(), ir.select(), tableAliases);
         appendConditions(sql, " HAVING ", ir.having(), tableAliases);
         appendOrderBy(sql, ir.orderBy(), tableAliases);
         if (ir.limit() != null && ir.limit() > 0) sql.append(" LIMIT ").append(ir.limit());
@@ -256,15 +256,98 @@ public class QueryBuilderService {
         }
     }
 
-    private void appendGroupBy(StringBuilder sql, List<String> groupBy, Map<String, String> tableAliases) {
+    private void appendGroupBy(StringBuilder sql, List<String> groupBy, List<String> select, Map<String, String> tableAliases) {
         if (groupBy == null || groupBy.isEmpty()) return;
+
+        Map<String, String> aliasExpressionMap = buildSelectAliasMap(select, tableAliases);
         List<String> normalized = new ArrayList<>();
         for (String field : groupBy) {
             String normalizedField = normalizeField(field, tableAliases);
             validateIdentifier(normalizedField);
-            normalized.add(normalizedField);
+            if (!normalized.contains(normalizedField)) {
+                normalized.add(normalizedField);
+            }
         }
+
+        if (!hasAggregateSelect(select)) {
+            if (select.size() == 1 && "*".equals(select.get(0))) {
+                for (Map.Entry<String, String> entry : tableAliases.entrySet()) {
+                    String table = entry.getKey();
+                    String alias = entry.getValue();
+                    for (String column : getColumns(table)) {
+                        String aliased = alias + "." + column;
+                        if (!normalized.contains(aliased)) {
+                            normalized.add(aliased);
+                        }
+                    }
+                }
+            } else {
+                for (String field : select) {
+                    String trimmed = field.trim();
+                    if (trimmed.isEmpty() || isAggregateField(trimmed)) continue;
+                    String normalizedSelectField = normalizeSelectField(trimmed, tableAliases);
+                    if (aliasExpressionMap.containsKey(normalizedSelectField)) {
+                        normalizedSelectField = aliasExpressionMap.get(normalizedSelectField);
+                    }
+                    if (!normalized.contains(normalizedSelectField)) {
+                        validateIdentifier(normalizedSelectField);
+                        normalized.add(normalizedSelectField);
+                    }
+                }
+            }
+        }
+
         sql.append(" GROUP BY ").append(String.join(", ", normalized));
+    }
+
+    private Map<String, String> buildSelectAliasMap(List<String> select, Map<String, String> tableAliases) {
+        Map<String, String> aliases = new HashMap<>();
+        if (select == null) return aliases;
+        for (String item : select) {
+            if (item == null) continue;
+            String trimmed = item.trim();
+            String upper = trimmed.toUpperCase();
+            int asIndex = upper.lastIndexOf(" AS ");
+            if (asIndex > 0) {
+                String expression = trimmed.substring(0, asIndex).trim();
+                String alias = trimmed.substring(asIndex + 4).trim();
+                if (!alias.isEmpty()) {
+                    aliases.put(alias, normalizeField(expression, tableAliases));
+                }
+            }
+        }
+        return aliases;
+    }
+
+    private String normalizeSelectField(String field, Map<String, String> tableAliases) {
+        String upper = field.toUpperCase();
+        int asIndex = upper.lastIndexOf(" AS ");
+        if (asIndex > 0) {
+            return field.substring(asIndex + 4).trim();
+        }
+        return normalizeField(field, tableAliases);
+    }
+
+    private boolean hasAggregateSelect(List<String> select) {
+        if (select == null || select.isEmpty()) return false;
+        for (String item : select) {
+            if (isAggregateField(item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isAggregateField(String field) {
+        if (field == null) return false;
+        String normalized = field.trim().toUpperCase();
+        return normalized.startsWith("COUNT(")
+                || normalized.startsWith("SUM(")
+                || normalized.startsWith("AVG(")
+                || normalized.startsWith("MIN(")
+                || normalized.startsWith("MAX(")
+                || normalized.startsWith("STDDEV(")
+                || normalized.startsWith("VARIANCE(");
     }
 
     private void appendOrderBy(StringBuilder sql, List<Map<String, Object>> orderBy, Map<String, String> tableAliases) {
