@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { AppBar, Box, Button, Container, Toolbar, Typography, Chip, Stack } from "@mui/material";
+import { AppBar, Box, Button, Container, Toolbar, Typography } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "./app/authSlice";
 import LoginPage from "./pages/LoginPage";
@@ -23,45 +23,24 @@ function PrivateRoute({ children }) {
 export default function App() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const user = useSelector((state) => state.auth.user);
-
-  const isAdmin = user?.roles?.includes("ROLE_ADMIN");
 
   return (
     <Box>
-      <AppBar position="static" sx={{ background: 'linear-gradient(90deg, #1976d2 0%, #42a5f5 100%)' }}>
+      <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold', letterSpacing: 1 }}>
-            SMART QUERY BUILDER
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Smart Query Builder
           </Typography>
           {isAuthenticated && (
-            <Stack direction="row" spacing={2} alignItems="center">
+            <>
               <Button color="inherit" component={Link} to="/">Dashboard</Button>
               <Button color="inherit" component={Link} to="/query-builder">Builder</Button>
               <Button color="inherit" component={Link} to="/my-requests">My Requests</Button>
-              {isAdmin && <Button color="inherit" component={Link} to="/admin-requests">Admin Requests</Button>}
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.1)', px: 2, py: 0.5, borderRadius: 2, gap: 1.5 }}>
-                <Chip 
-                  label={isAdmin ? "Admin" : "User"} 
-                  size="small" 
-                  color={isAdmin ? "secondary" : "default"}
-                  sx={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem' }}
-                />
-                <Typography variant="body2" sx={{ fontWeight: 500, color: '#fff' }}>
-                  {user?.email}
-                </Typography>
-              </Box>
-
-              <Button 
-                variant="outlined" 
-                color="inherit" 
-                onClick={() => dispatch(logout())}
-                sx={{ ml: 1, textTransform: 'none', borderColor: 'rgba(255,255,255,0.5)' }}
-              >
+              <Button color="inherit" component={Link} to="/admin-requests">Admin Requests</Button>
+              <Button color="inherit" onClick={() => dispatch(logout())}>
                 Logout
               </Button>
-            </Stack>
+            </>
           )}
         </Toolbar>
       </AppBar>

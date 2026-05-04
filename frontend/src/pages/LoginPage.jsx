@@ -3,7 +3,7 @@ import { Button, Card, CardContent, Stack, TextField, Typography } from "@mui/ma
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import api from "../api/client";
-import { setCredentials } from "../app/authSlice";
+import { setToken } from "../app/authSlice";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const submit = async () => {
     try {
       const { data } = await api.post("/auth/login", form);
-      dispatch(setCredentials(data));
+      dispatch(setToken(data.token));
       navigate("/");
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.response?.data?.error || "Login failed. Please check your credentials.";
