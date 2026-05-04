@@ -8,8 +8,12 @@ import DashboardPage from "./pages/DashboardPage";
 import QueryBuilderPage from "./pages/QueryBuilderPage";
 import SavedQueriesPage from "./pages/SavedQueriesPage";
 import AdminPage from "./pages/AdminPage";
+<<<<<<< HEAD
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+=======
+import CreateTablePage from "./pages/CreateTablePage";
+>>>>>>> 21df3adb2841ddce4b684f8b5432276186fdc5e7
 
 function PrivateRoute({ children }) {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
@@ -42,6 +46,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
           <Route path="/query-builder" element={<PrivateRoute><QueryBuilderPage /></PrivateRoute>} />
+          <Route path="/create-table" element={<PrivateRoute><CreateTablePage /></PrivateRoute>} />
           <Route path="/saved-queries" element={<PrivateRoute><SavedQueriesPage /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
         </Routes>

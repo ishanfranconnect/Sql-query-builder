@@ -1,0 +1,1 @@
+{ "type": "SELECT", "select": ["customers.customer_id", "SUM(order_items.price) as oi_total"], "from": "customers", "joins": [{"type": "INNER", "table": "orders", "on": "orders.customer_id=customers.customer_id"}, {"type": "INNER", "table": "order_items", "on": "order_items.order_id=orders.order_id"}], "groupBy": ["customers.customer_id"], "limit": 5, "offset": 1 }

@@ -28,7 +28,7 @@ public class DataInitializer implements CommandLineRunner {
                     return roleRepository.save(role);
                 });
 
-        roleRepository.findByName(RoleName.ROLE_USER)
+        Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseGet(() -> {
                     Role role = new Role();
                     role.setName(RoleName.ROLE_USER);
@@ -42,9 +42,24 @@ public class DataInitializer implements CommandLineRunner {
             admin.setEmail("admin@example.com");
             admin.setPassword(passwordEncoder.encode("admin123"));
             admin.setEmailVerified(true);
-            admin.getRoles().add(adminRole);
+            admin.setRole(adminRole);
             userRepository.save(admin);
             System.out.println("Default admin user created: admin@example.com / admin123");
+        }
+
+        // Create 5 dummy users
+        for (int i = 1; i <= 5; i++) {
+            String dummyEmail = "user" + i + "@example.com";
+            if (userRepository.findByEmail(dummyEmail).isEmpty()) {
+                User dummyUser = new User();
+                dummyUser.setName("Dummy User " + i);
+                dummyUser.setEmail(dummyEmail);
+                dummyUser.setPassword(passwordEncoder.encode("password" + i));
+                dummyUser.setEmailVerified(true);
+                dummyUser.setRole(userRole);
+                userRepository.save(dummyUser);
+                System.out.println("Dummy user created: " + dummyEmail);
+            }
         }
     }
 }
