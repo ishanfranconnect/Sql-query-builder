@@ -19,10 +19,11 @@ public class SavedQuery {
     private String name;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String queryJson;
 
     @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String generatedSql;
 
     private LocalDateTime createdAt = LocalDateTime.now();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Box, Button, Card, CardContent, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography
+  Box, Button, Card, CardContent, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography, Dialog, DialogTitle, DialogContent, DialogActions
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { setLatestResult } from "../app/querySlice";
@@ -29,6 +29,8 @@ export default function QueryBuilderPage() {
   const [ir, setIr] = useState(defaultIr);
   const [valuesText, setValuesText] = useState("");
   const [selectedAgg, setSelectedAgg] = useState("");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [queryName, setQueryName] = useState("");
   const dispatch = useDispatch();
   const result = useSelector((state) => state.query.latestResult);
 
@@ -181,6 +183,48 @@ export default function QueryBuilderPage() {
     }
   };
 
+  const saveQuery = async () => {
+    if (!queryName) return;
+    try {
+      const values = {};
+      valuesText.split(",").forEach(pair => {
+        const parts = pair.split("=");
+        if (parts.length === 2) {
+          const k = parts[0].trim();
+          const v = parts[1].trim();
+          if (k && v) values[k] = v;
+        }
+      });
+
+      const cleanSelect = ir.select.map(v => v.trim()).filter(Boolean);
+      if (cleanSelect.length === 0) cleanSelect.push("*");
+      const joins = (ir.joins || [])
+        .map((j) => ({
+          type: (j.type || "INNER").trim(),
+          table: (j.table || "").trim(),
+          on: normalizeJoinOn(j.on || "")
+        }))
+        .filter((j) => {
+          if (!j.table) return false;
+          if (j.type.toUpperCase() === "CROSS") return true;
+          return Boolean(j.on);
+        });
+      const where = (ir.where || []).filter(cond => cond.field && cond.value);
+      const having = (ir.having || []).filter(cond => cond.field && cond.value);
+      const orderBy = (ir.orderBy || []).filter(o => o.field);
+      const payloadQuery = { ...ir, values, select: cleanSelect, joins, where, having, orderBy };
+      
+      await api.post("/queries/save", { name: queryName, query: payloadQuery });
+      setSaveDialogOpen(false);
+      setQueryName("");
+      alert("Query saved successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save query");
+    }
+  };
+
+
   return (
     <Stack spacing={3} sx={{ p: 4, bgcolor: "#f0f2f5", minHeight: "100vh" }}>
       <Typography variant="h4" fontWeight="800" color="primary" gutterBottom>
@@ -193,7 +237,11 @@ export default function QueryBuilderPage() {
             {/* Header: Query Type & Table */}
             <Grid item xs={12} md={3}>
               <TextField select fullWidth label="Action" value={ir.type}
-                onChange={(e) => setIr({ ...ir, type: e.target.value })}>
+                onChange={(e) => {
+                  setIr({ ...defaultIr, type: e.target.value });
+                  setValuesText("");
+                  setSelectedAgg("");
+                }}>
                 <MenuItem value="SELECT">SELECT Data</MenuItem>
                 <MenuItem value="INSERT">INSERT New</MenuItem>
                 <MenuItem value="UPDATE">UPDATE Existing</MenuItem>
@@ -469,6 +517,7 @@ export default function QueryBuilderPage() {
 
           <Stack direction="row" spacing={2} sx={{ mt: 5, justifyContent: "center" }}>
             <Button variant="contained" size="large" onClick={execute} sx={{ py: 1.5, px: 6, borderRadius: 3, fontWeight: "bold" }}>⚡ EXECUTE QUERY</Button>
+            <Button variant="contained" color="secondary" size="large" onClick={() => setSaveDialogOpen(true)} sx={{ py: 1.5, px: 6, borderRadius: 3, fontWeight: "bold" }}>💾 SAVE QUERY</Button>
             <Button variant="outlined" size="large" onClick={() => { setIr(defaultIr); setValuesText(""); }} sx={{ py: 1.5, px: 6, borderRadius: 3 }}>RESET</Button>
           </Stack>
         </CardContent>
@@ -498,6 +547,17 @@ export default function QueryBuilderPage() {
           </Box>
         </CardContent>
       </Card>
+
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+        <DialogTitle>Save Query</DialogTitle>
+        <DialogContent>
+          <TextField autoFocus margin="dense" label="Query Name" fullWidth value={queryName} onChange={(e) => setQueryName(e.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button onClick={saveQuery} variant="contained" color="primary">Save</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
