@@ -8,6 +8,7 @@ import DashboardPage from "./pages/DashboardPage";
 import QueryBuilderPage from "./pages/QueryBuilderPage";
 import SavedQueriesPage from "./pages/SavedQueriesPage";
 import AdminPage from "./pages/AdminPage";
+import CreateTablePage from "./pages/CreateTablePage";
 
 function PrivateRoute({ children }) {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
           <Route path="/query-builder" element={<PrivateRoute><QueryBuilderPage /></PrivateRoute>} />
+          <Route path="/create-table" element={<PrivateRoute><CreateTablePage /></PrivateRoute>} />
           <Route path="/saved-queries" element={<PrivateRoute><SavedQueriesPage /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
         </Routes>

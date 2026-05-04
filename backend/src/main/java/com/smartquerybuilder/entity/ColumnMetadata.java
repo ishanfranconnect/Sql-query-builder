@@ -18,4 +18,8 @@ public class ColumnMetadata {
     private String columnName;
     @Column(nullable = false)
     private String dataType;
+
+    /** Human-readable constraint summary for the query builder (e.g. NOT NULL, PK). */
+    @Column(name = "column_constraints", length = 512)
+    private String columnConstraints;
 }

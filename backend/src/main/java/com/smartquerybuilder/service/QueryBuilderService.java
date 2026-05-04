@@ -58,7 +58,7 @@ public class QueryBuilderService {
         if (Boolean.TRUE.equals(ir.distinct())) sql.append("DISTINCT ");
         
         // Handle table aliases for joins to avoid column conflicts
-        Map<String, String> tableAliases = new HashMap<>();
+        Map<String, String> tableAliases = new java.util.LinkedHashMap<>();
         List<String> tables = new ArrayList<>();
         tables.add(ir.from());
         tableAliases.put(ir.from(), generateAlias(ir.from()));
@@ -92,8 +92,13 @@ public class QueryBuilderService {
             }
             sql.append(String.join(", ", selectParts));
         } else {
-            ir.select().forEach(this::validateIdentifier);
-            sql.append(String.join(", ", ir.select()));
+            List<String> normalizedSelects = new ArrayList<>();
+            for (String s : ir.select()) {
+                String normalized = normalizeField(s, tableAliases);
+                validateIdentifier(normalized);
+                normalizedSelects.add(normalized);
+            }
+            sql.append(String.join(", ", normalizedSelects));
         }
         
         sql.append(" FROM ").append(ir.from());
@@ -105,7 +110,7 @@ public class QueryBuilderService {
         appendConditions(sql, " WHERE ", ir.where(), tableAliases);
         appendGroupBy(sql, ir.groupBy(), ir.select(), tableAliases);
         appendConditions(sql, " HAVING ", ir.having(), tableAliases);
-        appendOrderBy(sql, ir.orderBy(), tableAliases);
+        appendOrderBy(sql, ir.orderBy(), tableAliases, ir.select(), ir.from());
         if (ir.limit() != null && ir.limit() > 0) sql.append(" LIMIT ").append(ir.limit());
         if (ir.offset() != null && ir.offset() >= 0) sql.append(" OFFSET ").append(ir.offset());
         return sql.toString();
@@ -218,26 +223,27 @@ public class QueryBuilderService {
 
     private String normalizeField(String field, Map<String, String> tableAliases) {
         if (field == null) return null;
-        String trimmed = field.trim();
-        int dotIndex = trimmed.indexOf('.');
-        if (dotIndex > 0) {
-            String left = trimmed.substring(0, dotIndex);
-            String right = trimmed.substring(dotIndex + 1);
-            if (tableAliases.containsKey(left)) {
-                return tableAliases.get(left) + "." + right;
+        String result = field.trim();
+
+        // Replace full table names with aliases
+        for (Map.Entry<String, String> entry : tableAliases.entrySet()) {
+            result = result.replaceAll("\\b" + Pattern.quote(entry.getKey()) + "\\.", entry.getValue() + ".");
+        }
+
+        // Handle cases like "c_customer_id" -> "c.customer_id"
+        // But only if it's a simple identifier (no dots)
+        if (!result.contains(".")) {
+            int underscoreIndex = result.indexOf('_');
+            if (underscoreIndex > 0) {
+                String alias = result.substring(0, underscoreIndex);
+                String column = result.substring(underscoreIndex + 1);
+                if (tableAliases.containsValue(alias)) {
+                    return alias + "." + column;
+                }
             }
         }
 
-        int underscoreIndex = trimmed.indexOf('_');
-        if (underscoreIndex > 0) {
-            String alias = trimmed.substring(0, underscoreIndex);
-            String column = trimmed.substring(underscoreIndex + 1);
-            if (tableAliases.containsValue(alias)) {
-                return alias + "." + column;
-            }
-        }
-
-        return trimmed;
+        return result;
     }
 
     private void appendConditions(StringBuilder sql, String prefix, List<Map<String, Object>> conditions, Map<String, String> tableAliases) {
@@ -354,18 +360,20 @@ public class QueryBuilderService {
                 || normalized.startsWith("VARIANCE(");
     }
 
-    private void appendOrderBy(StringBuilder sql, List<Map<String, Object>> orderBy, Map<String, String> tableAliases) {
+    private void appendOrderBy(StringBuilder sql, List<Map<String, Object>> orderBy, Map<String, String> tableAliases, List<String> select, String fromTable) {
         if (orderBy == null || orderBy.isEmpty()) return;
         sql.append(" ORDER BY ");
-        String mainTable = tableAliases.entrySet().iterator().next().getKey(); // Assuming first is main
-        String mainAlias = tableAliases.get(mainTable);
+        String mainAlias = tableAliases.get(fromTable);
+        Map<String, String> aliasExpressionMap = buildSelectAliasMap(select, tableAliases);
         for (int i = 0; i < orderBy.size(); i++) {
             Map<String, Object> o = orderBy.get(i);
             String field = String.valueOf(o.get("field"));
-            if (!field.contains(".")) {
+            if (!field.contains(".") && !aliasExpressionMap.containsKey(field)) {
                 field = mainAlias + "." + field;
             }
-            field = normalizeField(field, tableAliases);
+            if (!aliasExpressionMap.containsKey(field)) {
+                field = normalizeField(field, tableAliases);
+            }
             String direction = String.valueOf(o.getOrDefault("direction", "ASC")).toUpperCase();
             validateIdentifier(field);
             sql.append(field).append(" ").append(direction.equals("DESC") ? "DESC" : "ASC");

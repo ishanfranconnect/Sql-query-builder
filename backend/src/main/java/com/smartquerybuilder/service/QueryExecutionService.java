@@ -18,6 +18,7 @@ public class QueryExecutionService {
 
     public Map<String, Object> execute(QueryBuilderRequest request) {
         String sql = queryBuilderService.generateSql(request);
+        System.out.println("EXECUTE SQL: " + sql);
         blockDestructiveSql(sql);
         String type = request.type() == null ? "SELECT" : request.type().toUpperCase();
         
