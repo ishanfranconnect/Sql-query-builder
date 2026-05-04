@@ -16,11 +16,19 @@ public class QueryExecutionService {
     private final QueryBuilderService queryBuilderService;
     private final JdbcTemplate jdbcTemplate;
 
-    public Map<String, Object> execute(QueryBuilderRequest request) {
+    public Map<String, Object> execute(QueryBuilderRequest request, boolean isInternal) {
         String sql = queryBuilderService.generateSql(request);
+        String type = request.type() == null ? "SELECT" : request.type().toUpperCase();
+        
+        if (!isInternal && !"SELECT".equals(type)) {
+            // Check if current user is admin. If not, block.
+            // Note: In a real app, we'd check SecurityContextHolder.
+            // But here we rely on the controller or this flag.
+            throw new SecurityException("Direct modification requires admin approval.");
+        }
+
         System.out.println("EXECUTE SQL: " + sql);
         blockDestructiveSql(sql);
-        String type = request.type() == null ? "SELECT" : request.type().toUpperCase();
         
         List<Object> paramsList = new ArrayList<>();
         if (request.values() != null) {

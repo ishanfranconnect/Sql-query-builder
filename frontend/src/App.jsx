@@ -8,12 +8,12 @@ import DashboardPage from "./pages/DashboardPage";
 import QueryBuilderPage from "./pages/QueryBuilderPage";
 import SavedQueriesPage from "./pages/SavedQueriesPage";
 import AdminPage from "./pages/AdminPage";
-<<<<<<< HEAD
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-=======
 import CreateTablePage from "./pages/CreateTablePage";
->>>>>>> 21df3adb2841ddce4b684f8b5432276186fdc5e7
+import MyRequestsPage from "./pages/MyRequestsPage";
+import AdminRequestsPage from "./pages/AdminRequestsPage";
+import { Link } from "react-router-dom";
 
 function PrivateRoute({ children }) {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
@@ -32,9 +32,15 @@ export default function App() {
             Smart Query Builder
           </Typography>
           {isAuthenticated && (
-            <Button color="inherit" onClick={() => dispatch(logout())}>
-              Logout
-            </Button>
+            <>
+              <Button color="inherit" component={Link} to="/">Dashboard</Button>
+              <Button color="inherit" component={Link} to="/query-builder">Builder</Button>
+              <Button color="inherit" component={Link} to="/my-requests">My Requests</Button>
+              <Button color="inherit" component={Link} to="/admin-requests">Admin Requests</Button>
+              <Button color="inherit" onClick={() => dispatch(logout())}>
+                Logout
+              </Button>
+            </>
           )}
         </Toolbar>
       </AppBar>
@@ -49,6 +55,8 @@ export default function App() {
           <Route path="/create-table" element={<PrivateRoute><CreateTablePage /></PrivateRoute>} />
           <Route path="/saved-queries" element={<PrivateRoute><SavedQueriesPage /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
+          <Route path="/my-requests" element={<PrivateRoute><MyRequestsPage /></PrivateRoute>} />
+          <Route path="/admin-requests" element={<PrivateRoute><AdminRequestsPage /></PrivateRoute>} />
         </Routes>
       </Container>
     </Box>

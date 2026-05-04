@@ -172,7 +172,17 @@ export default function QueryBuilderPage() {
       const orderBy = (ir.orderBy || []).filter(o => o.field);
       const payload = { ...ir, values, select: cleanSelect, joins, where, having, orderBy };
       const { data } = await api.post("/queries/execute", payload);
-      dispatch(setLatestResult(data));
+      
+      if (data.status === "PENDING_APPROVAL") {
+        alert("Your modification request has been submitted for admin approval.");
+        dispatch(setLatestResult({ 
+          message: "Request sent for admin approval",
+          status: "PENDING",
+          sql: data.sql 
+        }));
+      } else {
+        dispatch(setLatestResult(data));
+      }
     } catch (err) {
       console.error(err);
       dispatch(setLatestResult({ 

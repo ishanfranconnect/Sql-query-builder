@@ -33,22 +33,12 @@ public class EmailService {
     }
 
     private void send(String to, String subject, String body) {
-<<<<<<< HEAD
         System.out.println("---------- EMAIL START ----------");
         System.out.println("To: " + to);
         System.out.println("Subject: " + subject);
         System.out.println("Body: " + body);
         System.out.println("----------- EMAIL END -----------");
 
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(body);
-            mailSender.send(message);
-        } catch (Exception e) {
-            System.err.println("SMTP Error: Could not send email via server. Check your SMTP credentials in application.properties.");
-=======
         if (smtpUsername == null || smtpUsername.isBlank() || smtpPassword == null || smtpPassword.isBlank()) {
             log.warn("SMTP credentials are not configured; skipping email to {}", to);
             return;
@@ -60,9 +50,8 @@ public class EmailService {
         message.setText(body);
         try {
             mailSender.send(message);
-        } catch (MailException ex) {
-            log.error("Failed to send email to {}: {}", to, ex.getMessage());
->>>>>>> 21df3adb2841ddce4b684f8b5432276186fdc5e7
+        } catch (Exception e) {
+            log.error("Failed to send email to {}: {}", to, e.getMessage());
         }
     }
 }

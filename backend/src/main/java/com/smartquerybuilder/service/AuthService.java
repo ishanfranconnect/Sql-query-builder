@@ -45,12 +45,8 @@ public class AuthService {
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setVerificationToken(UUID.randomUUID().toString());
-<<<<<<< HEAD
         user.setEmailVerified(true); // Automatically verify for local development
-        user.getRoles().add(userRole);
-=======
         user.setRole(userRole);
->>>>>>> 21df3adb2841ddce4b684f8b5432276186fdc5e7
         userRepository.save(user);
         
         try {

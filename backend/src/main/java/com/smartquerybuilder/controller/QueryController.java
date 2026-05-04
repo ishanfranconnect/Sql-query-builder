@@ -5,6 +5,7 @@ import com.smartquerybuilder.dto.SavedQueryRequest;
 import com.smartquerybuilder.service.QueryBuilderService;
 import com.smartquerybuilder.service.QueryExecutionService;
 import com.smartquerybuilder.service.SavedQueryService;
+import com.smartquerybuilder.service.ModificationRequestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -20,6 +21,7 @@ public class QueryController {
     private final QueryBuilderService queryBuilderService;
     private final QueryExecutionService queryExecutionService;
     private final SavedQueryService savedQueryService;
+    private final ModificationRequestService modificationRequestService;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/generate")
@@ -28,8 +30,20 @@ public class QueryController {
     }
 
     @PostMapping("/execute")
-    public Map<String, Object> execute(@RequestBody QueryBuilderRequest request) {
-        return queryExecutionService.execute(request);
+    public Map<String, Object> execute(@RequestBody QueryBuilderRequest request, Authentication auth) throws Exception {
+        String type = request.type() == null ? "SELECT" : request.type().toUpperCase();
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        
+        if (!"SELECT".equals(type)) {
+            modificationRequestService.createRequest(auth.getName(), request);
+            return Map.of(
+                "message", "Action requested for admin approval. Please check the Requests dashboard.",
+                "status", "PENDING_APPROVAL",
+                "sql", queryBuilderService.generateSql(request)
+            );
+        }
+        return queryExecutionService.execute(request, isAdmin);
     }
 
     @PostMapping("/save")

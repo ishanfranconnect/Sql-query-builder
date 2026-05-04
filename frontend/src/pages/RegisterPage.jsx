@@ -11,38 +11,26 @@ export default function RegisterPage() {
 
   const submit = async () => {
     try {
-<<<<<<< HEAD
+      setError("");
+      setMessage("");
       await api.post("/auth/register", form);
       setMessage("Registration successful! Redirecting to login...");
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
-      if (err.response?.data?.errors) {
-        const fieldErrors = Object.entries(err.response.data.errors)
-          .map(([field, msg]) => `${field}: ${msg}`)
-          .join(", ");
-        setMessage(`Validation failed: ${fieldErrors}`);
-      } else {
-        const errorMsg = err.response?.data?.message || err.response?.data?.error || "Registration failed. Please try again.";
-        setMessage(errorMsg);
-=======
-      setError("");
-      setMessage("");
-      await api.post("/auth/register", form);
-      setMessage("Registration successful. Verify your email then login.");
-      setTimeout(() => navigate("/login"), 1200);
-    } catch (err) {
-      if (err.response && err.response.data) {
+      if (err.response?.data) {
         const data = err.response.data;
-        if (data.error) {
-          setError(data.error);
+        if (data.errors) {
+          const fieldErrors = Object.entries(data.errors)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join(", ");
+          setError(`Validation failed: ${fieldErrors}`);
+        } else if (data.message || data.error) {
+          setError(data.message || data.error);
         } else {
-          // Combine field validation errors
-          const errorMessages = Object.values(data).join(", ");
-          setError(errorMessages || "Registration failed.");
+          setError("Registration failed.");
         }
       } else {
         setError("Network error or registration failed.");
->>>>>>> 21df3adb2841ddce4b684f8b5432276186fdc5e7
       }
     }
   };
