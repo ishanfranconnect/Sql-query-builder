@@ -26,12 +26,17 @@ public class ModificationRequest {
     private String targetTable;
 
     @Column(columnDefinition = "LONGTEXT", nullable = false)
-    private String payload; // JSON representation of QueryBuilderRequest
+    private String payload;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String queryText;
 
     @Column(nullable = false)
-    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+    private String status = "PENDING";
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "reviewed_by")
@@ -40,4 +45,9 @@ public class ModificationRequest {
     private LocalDateTime reviewedAt;
 
     private String executionResult;
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

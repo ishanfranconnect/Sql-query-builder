@@ -22,34 +22,69 @@ export default function MyRequestsPage() {
   };
 
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom>My Modification Requests</Typography>
-      {error && <Typography color="error" sx={{ mb: 2 }}>Error: {error}</Typography>}
-      <Paper sx={{ p: 2 }}>
+    <Container sx={{ py: 4 }}>
+      <Typography variant="h4" fontWeight="800" color="primary" gutterBottom>
+        📑 My Modification Requests
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+        Track the status of your INSERT, UPDATE, and DELETE query requests submitted for admin approval.
+      </Typography>
+
+      {error && (
+        <Paper sx={{ p: 2, bgcolor: "#ffebee", color: "#c62828", mb: 3, borderRadius: 2 }}>
+          <Typography>Error: {error}</Typography>
+        </Paper>
+      )}
+
+      <Paper sx={{ borderRadius: 3, boxShadow: 3, overflow: "hidden" }}>
         <Table>
-          <TableHead>
+          <TableHead sx={{ bgcolor: "#f8f9fa" }}>
             <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Table</TableCell>
-              <TableCell>Action</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Reviewer</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>ID</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>TARGET TABLE</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>ACTION TYPE</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>STATUS</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>SUBMITTED DATE</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>REVIEWER</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {requests.map((req) => (
-              <TableRow key={req.id}>
-                <TableCell>{req.id}</TableCell>
-                <TableCell>{req.targetTable}</TableCell>
-                <TableCell>{req.actionType}</TableCell>
+              <TableRow key={req.id} hover>
+                <TableCell>#{req.id}</TableCell>
                 <TableCell>
-                  <Chip label={req.status} color={getStatusColor(req.status)} size="small" />
+                  <Typography variant="body2" sx={{ fontFamily: "monospace", bgcolor: "#e3f2fd", px: 1, borderRadius: 1, display: "inline-block" }}>
+                    {req.targetTable}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Chip label={req.actionType} size="small" variant="outlined" />
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={req.status} 
+                    color={getStatusColor(req.status)} 
+                    variant={req.status === "PENDING" ? "outlined" : "filled"}
+                    size="small" 
+                  />
                 </TableCell>
                 <TableCell>{new Date(req.createdAt).toLocaleString()}</TableCell>
-                <TableCell>{req.reviewedBy ? req.reviewedBy.email : "N/A"}</TableCell>
+                <TableCell>
+                  {req.reviewedBy ? (
+                    <Typography variant="body2" color="success.main">{req.reviewedBy.email}</Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.disabled">Pending Review</Typography>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
+            {requests.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                  <Typography color="text.secondary">You haven't submitted any modification requests yet.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </Paper>

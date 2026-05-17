@@ -39,7 +39,7 @@ public class QueryController {
             modificationRequestService.createRequest(auth.getName(), request);
             return Map.of(
                 "message", "Action requested for admin approval. Please check the Requests dashboard.",
-                "status", "PENDING_APPROVAL",
+                "status", "PENDING",
                 "sql", queryBuilderService.generateSql(request)
             );
         }

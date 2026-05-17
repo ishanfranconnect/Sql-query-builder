@@ -22,6 +22,8 @@ public class ModificationRequestService {
     private final ModificationRequestRepository repository;
     private final UserRepository userRepository;
     private final QueryExecutionService queryExecutionService;
+    private final QueryBuilderService queryBuilderService;
+    private final EmailService emailService;
     private final ObjectMapper objectMapper;
 
     public ModificationRequest createRequest(String email, QueryBuilderRequest request) throws Exception {
@@ -33,12 +35,23 @@ public class ModificationRequestService {
         modRequest.setActionType(request.type());
         modRequest.setTargetTable(request.from());
         modRequest.setPayload(objectMapper.writeValueAsString(request));
+        
+        // Generate SQL text for preview and logging
+        String sql = queryBuilderService.generateSql(request);
+        modRequest.setQueryText(sql);
+
         modRequest.setStatus("PENDING");
         modRequest.setCreatedAt(LocalDateTime.now());
 
         log.info("Request Created: ID={}, User={}, Action={}, Table={}", 
                 modRequest.getId(), email, request.type(), request.from());
-        return repository.save(modRequest);
+        
+        ModificationRequest savedRequest = repository.save(modRequest);
+        
+        // Trigger admin email notification (errors handled internally by EmailService)
+        emailService.sendAdminNotification(savedRequest);
+        
+        return savedRequest;
     }
 
     public List<ModificationRequest> getAllRequests() {
@@ -75,7 +88,12 @@ public class ModificationRequestService {
         modRequest.setReviewedAt(LocalDateTime.now());
         modRequest.setExecutionResult(objectMapper.writeValueAsString(result));
 
-        return repository.save(modRequest);
+        ModificationRequest saved = repository.save(modRequest);
+
+        // Send Email Notification
+        emailService.sendApprovalNotification(modRequest.getUser().getEmail(), modRequest.getActionType(), modRequest.getQueryText());
+
+        return saved;
     }
 
     public ModificationRequest rejectRequest(Long requestId, String adminEmail) {
@@ -93,6 +111,11 @@ public class ModificationRequestService {
         modRequest.setReviewedBy(admin);
         modRequest.setReviewedAt(LocalDateTime.now());
 
-        return repository.save(modRequest);
+        ModificationRequest saved = repository.save(modRequest);
+
+        // Send Email Notification
+        emailService.sendRejectionNotification(modRequest.getUser().getEmail(), modRequest.getActionType(), modRequest.getQueryText());
+
+        return saved;
     }
 }

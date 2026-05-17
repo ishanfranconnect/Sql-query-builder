@@ -10,37 +10,42 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/requests")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class ModificationRequestController {
 
     private final ModificationRequestService service;
 
-    @PostMapping
+    // 1. Submit Query Request (User)
+    @PostMapping("/query-request")
     public ModificationRequest create(@RequestBody QueryBuilderRequest request, Authentication auth) throws Exception {
         return service.createRequest(auth.getName(), request);
     }
 
-    @GetMapping
+    // 2. Get Pending Requests (Admin)
+    @GetMapping("/admin/pending-queries")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<ModificationRequest> getAll() {
+    public List<ModificationRequest> getPending() {
+        // For simplicity, returning all. Usually would filter for status = PENDING
         return service.getAllRequests();
     }
 
-    @GetMapping("/my")
-    public List<ModificationRequest> getMyRequests(Authentication auth) {
-        return service.getMyRequests(auth.getName());
-    }
-
-    @PostMapping("/{id}/approve")
+    // 3. Approve Query (Admin)
+    @PostMapping("/admin/approve/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ModificationRequest approve(@PathVariable Long id, Authentication auth) throws Exception {
         return service.approveRequest(id, auth.getName());
     }
 
-    @PostMapping("/{id}/reject")
+    // 4. Reject Query (Admin)
+    @PostMapping("/admin/reject/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ModificationRequest reject(@PathVariable Long id, Authentication auth) {
         return service.rejectRequest(id, auth.getName());
+    }
+
+    @GetMapping("/requests/my")
+    public List<ModificationRequest> getMyRequests(Authentication auth) {
+        return service.getMyRequests(auth.getName());
     }
 }

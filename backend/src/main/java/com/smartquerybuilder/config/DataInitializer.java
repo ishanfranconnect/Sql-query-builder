@@ -35,31 +35,51 @@ public class DataInitializer implements CommandLineRunner {
                     return roleRepository.save(role);
                 });
 
-        // Create default admin if not exist
-        if (userRepository.findByEmail("admin@example.com").isEmpty()) {
-            User admin = new User();
-            admin.setName("Admin User");
-            admin.setEmail("admin@example.com");
-            admin.setPassword(passwordEncoder.encode("admin123"));
-            admin.setEmailVerified(true);
-            admin.setRole(adminRole);
-            userRepository.save(admin);
-            System.out.println("Default admin user created: admin@example.com / admin123");
-        }
+        // Create or update default admin
+        User admin = userRepository.findByEmail("admin@example.com")
+                .orElseGet(() -> {
+                    User u = new User();
+                    u.setEmail("admin@example.com");
+                    u.setName("Admin User");
+                    u.setEmailVerified(true);
+                    u.setRole(adminRole);
+                    return u;
+                });
+        admin.setPassword(passwordEncoder.encode("admin123"));
+        userRepository.save(admin);
+        System.out.println("Admin user password reset to: admin123");
 
-        // Create 5 dummy users
+        // Create or update ishananand930@gmail.com as admin
+        User ishanAdmin = userRepository.findByEmail("ishananand930@gmail.com")
+                .orElseGet(() -> {
+                    User u = new User();
+                    u.setEmail("ishananand930@gmail.com");
+                    u.setName("Ishan Admin");
+                    u.setEmailVerified(true);
+                    u.setRole(adminRole);
+                    return u;
+                });
+        ishanAdmin.setRole(adminRole);
+        ishanAdmin.setPassword(passwordEncoder.encode("admin123"));
+        userRepository.save(ishanAdmin);
+        System.out.println("Ishan Admin user password reset to: ishananand930@gmail.com / admin123");
+
+        // Create or update 5 dummy users
         for (int i = 1; i <= 5; i++) {
             String dummyEmail = "user" + i + "@example.com";
-            if (userRepository.findByEmail(dummyEmail).isEmpty()) {
-                User dummyUser = new User();
-                dummyUser.setName("Dummy User " + i);
-                dummyUser.setEmail(dummyEmail);
-                dummyUser.setPassword(passwordEncoder.encode("password" + i));
-                dummyUser.setEmailVerified(true);
-                dummyUser.setRole(userRole);
-                userRepository.save(dummyUser);
-                System.out.println("Dummy user created: " + dummyEmail);
-            }
+            int finalI = i;
+            User dummyUser = userRepository.findByEmail(dummyEmail)
+                    .orElseGet(() -> {
+                        User u = new User();
+                        u.setEmail(dummyEmail);
+                        u.setName("Dummy User " + finalI);
+                        u.setEmailVerified(true);
+                        u.setRole(userRole);
+                        return u;
+                    });
+            dummyUser.setPassword(passwordEncoder.encode("password" + i));
+            userRepository.save(dummyUser);
+            System.out.println("Dummy user password reset to: " + dummyEmail + " / password" + i);
         }
     }
 }

@@ -173,7 +173,7 @@ export default function QueryBuilderPage() {
       const payload = { ...ir, values, select: cleanSelect, joins, where, having, orderBy };
       const { data } = await api.post("/queries/execute", payload);
       
-      if (data.status === "PENDING_APPROVAL") {
+      if (data.status === "PENDING_APPROVAL" || data.status === "PENDING") {
         alert("Your modification request has been submitted for admin approval.");
         dispatch(setLatestResult({ 
           message: "Request sent for admin approval",
