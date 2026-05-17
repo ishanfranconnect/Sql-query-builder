@@ -11,7 +11,9 @@ import {
   Stack,
   TextField,
   Typography,
+  Chip,
 } from "@mui/material";
+import { Link } from "react-router-dom";
 import api from "../api/client";
 
 const emptyColumn = () => ({
@@ -105,202 +107,285 @@ export default function CreateTablePage() {
   };
 
   return (
-    <Stack spacing={3} sx={{ p: 4, bgcolor: "#f0f2f5", minHeight: "100vh" }}>
-      <Typography variant="h4" fontWeight="800" color="primary" gutterBottom>
-        Create table
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Define columns with MySQL types and constraints. At least one column must be marked as primary key.
-        AUTO_INCREMENT must be enabled only on the primary key column.
-      </Typography>
+    <Stack spacing={4} sx={{ pb: 6 }}>
+      {/* Title Header */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box>
+          <Typography variant="h4" fontWeight="900" sx={{ background: "linear-gradient(90deg, #06b6d4, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", mb: 0.5 }}>
+            🛠️ Visual Table Creator
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Visually structure MySQL database tables with keys, types, and constraints without writing SQL.
+          </Typography>
+        </Box>
+        <Button component={Link} to="/" variant="outlined" sx={{ borderRadius: 3, textTransform: "none", fontWeight: "bold" }}>
+          ← Back to Dashboard
+        </Button>
+      </Box>
 
-      <Card sx={{ boxShadow: 6, borderRadius: 4 }}>
-        <CardContent sx={{ p: 4 }}>
+      {/* Main Workspace Card */}
+      <Card sx={{ 
+        boxShadow: "0 10px 40px rgba(0,0,0,0.04)", 
+        borderRadius: 5, 
+        border: "1px solid rgba(0,0,0,0.06)",
+        overflow: "visible" 
+      }}>
+        <CardContent sx={{ p: { xs: 3, md: 5 } }}>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 required
-                label="Table name"
+                label="Table System Name"
                 value={tableName}
                 onChange={(e) => setTableName(e.target.value)}
-                placeholder="e.g. orders"
+                placeholder="e.g. products"
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
               />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Display name (optional)"
+                label="Display Friendly Name (optional)"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Shown in metadata; defaults to table name"
+                placeholder="e.g. Products Inventory"
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
               />
             </Grid>
           </Grid>
 
-          <Typography variant="subtitle1" sx={{ mt: 3, mb: 2 }} fontWeight={600}>
-            Columns
-          </Typography>
+          <Box sx={{ mt: 5, mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="h6" fontWeight="800" color="text.secondary" sx={{ letterSpacing: 0.5, textTransform: "uppercase", fontSize: "0.9rem" }}>
+              📋 Define Columns Structure
+            </Typography>
+            <Button variant="outlined" onClick={addColumn} sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: "bold" }}>
+              + Add Column
+            </Button>
+          </Box>
 
-          {columns.map((col, idx) => (
-            <Box
-              key={idx}
-              sx={{
-                p: 2,
-                mb: 2,
-                bgcolor: "#f8f9fa",
-                borderRadius: 2,
-                border: "1px dashed #ccc",
-              }}
-            >
-              <Grid container spacing={2} alignItems="flex-start">
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Column name"
-                    value={col.columnName}
-                    onChange={(e) => updateColumn(idx, "columnName", e.target.value)}
-                    placeholder="id"
-                  />
-                </Grid>
-                <Grid item xs={12} md={2}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Quick type"
-                    value={presetTypes[idx] === undefined ? "" : presetTypes[idx]}
-                    onChange={(e) => applyPreset(idx, e.target.value)}
-                  >
-                    <MenuItem value="">
-                      <em>Use manual type below</em>
-                    </MenuItem>
-                    {DATA_TYPE_PRESETS.map((p) => (
-                      <MenuItem key={p} value={p}>
-                        {p}
-                      </MenuItem>
-                    ))}
-                    <MenuItem value="custom">Custom…</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Data type"
-                    value={col.dataType}
-                    onChange={(e) => updateColumn(idx, "dataType", e.target.value)}
-                    placeholder="INT or VARCHAR(255)"
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Default"
-                    value={col.defaultValue}
-                    onChange={(e) => updateColumn(idx, "defaultValue", e.target.value)}
-                    placeholder="NULL, 0, or 'text'"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={col.notNull}
-                          onChange={(e) => updateColumn(idx, "notNull", e.target.checked)}
-                        />
-                      }
-                      label="NOT NULL"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={col.primaryKey}
-                          onChange={(e) => updateColumn(idx, "primaryKey", e.target.checked)}
-                        />
-                      }
-                      label="PRIMARY KEY"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={col.unique}
-                          onChange={(e) => updateColumn(idx, "unique", e.target.checked)}
-                          disabled={col.primaryKey}
-                        />
-                      }
-                      label="UNIQUE"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={col.autoIncrement}
-                          onChange={(e) => updateColumn(idx, "autoIncrement", e.target.checked)}
-                        />
-                      }
-                      label="AUTO_INCREMENT"
-                    />
-                    <Button
+          <Stack spacing={3.5} sx={{ mb: 4 }}>
+            {columns.map((col, idx) => (
+              <Box
+                key={idx}
+                sx={{
+                  p: 3,
+                  bgcolor: "#f8fafc",
+                  borderRadius: 4,
+                  border: "1px solid #e2e8f0",
+                  position: "relative",
+                  transition: "all 0.2s",
+                  "&:hover": {
+                    borderColor: "#cbd5e1",
+                    boxShadow: "0 4px 15px rgba(0,0,0,0.02)"
+                  }
+                }}
+              >
+                <Grid container spacing={2.5} alignItems="center">
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
                       size="small"
-                      color="error"
-                      onClick={() => removeColumn(idx)}
-                      disabled={columns.length <= 1}
+                      label="Column Name"
+                      value={col.columnName}
+                      onChange={(e) => updateColumn(idx, "columnName", e.target.value)}
+                      placeholder="e.g. product_id"
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: "#fff" } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      label="Data Type Preset"
+                      value={presetTypes[idx] === undefined ? "" : presetTypes[idx]}
+                      onChange={(e) => applyPreset(idx, e.target.value)}
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: "#fff" } }}
                     >
-                      Remove column
-                    </Button>
-                  </Stack>
+                      <MenuItem value="">
+                        <em>Manual Specification</em>
+                      </MenuItem>
+                      {DATA_TYPE_PRESETS.map((p) => (
+                        <MenuItem key={p} value={p}>
+                          {p}
+                        </MenuItem>
+                      ))}
+                      <MenuItem value="custom">Custom Type...</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="SQL Type Definition"
+                      value={col.dataType}
+                      onChange={(e) => updateColumn(idx, "dataType", e.target.value)}
+                      placeholder="INT, VARCHAR(100), etc."
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: "#fff" } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Default Value"
+                      value={col.defaultValue}
+                      onChange={(e) => updateColumn(idx, "defaultValue", e.target.value)}
+                      placeholder="e.g. NULL or 0"
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: "#fff" } }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Stack direction="row" flexWrap="wrap" gap={2} alignItems="center" justifyContent="space-between">
+                      <Stack direction="row" flexWrap="wrap" gap={2}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={col.notNull}
+                              onChange={(e) => updateColumn(idx, "notNull", e.target.checked)}
+                            />
+                          }
+                          label={<Typography variant="body2" fontWeight="600">NOT NULL</Typography>}
+                        />
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={col.primaryKey}
+                              onChange={(e) => updateColumn(idx, "primaryKey", e.target.checked)}
+                            />
+                          }
+                          label={<Typography variant="body2" fontWeight="600">PRIMARY KEY</Typography>}
+                        />
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={col.unique}
+                              onChange={(e) => updateColumn(idx, "unique", e.target.checked)}
+                              disabled={col.primaryKey}
+                            />
+                          }
+                          label={<Typography variant="body2" fontWeight="600">UNIQUE</Typography>}
+                        />
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={col.autoIncrement}
+                              onChange={(e) => updateColumn(idx, "autoIncrement", e.target.checked)}
+                            />
+                          }
+                          label={<Typography variant="body2" fontWeight="600">AUTO_INCREMENT</Typography>}
+                        />
+                      </Stack>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => removeColumn(idx)}
+                        disabled={columns.length <= 1}
+                        sx={{ fontWeight: "bold", textTransform: "none" }}
+                      >
+                        🗑️ Delete Column
+                      </Button>
+                    </Stack>
+                  </Grid>
                 </Grid>
-              </Grid>
-            </Box>
-          ))}
+              </Box>
+            ))}
+          </Stack>
 
-          <Button variant="outlined" onClick={addColumn} sx={{ mt: 1, textTransform: "none" }}>
-            + Add column
-          </Button>
-
-          <Stack direction="row" spacing={2} sx={{ mt: 4, justifyContent: "center" }}>
+          <Stack direction="row" spacing={2} sx={{ mt: 5, justifyContent: "center" }}>
             <Button
               variant="contained"
               size="large"
               onClick={submit}
               disabled={loading}
-              sx={{ py: 1.5, px: 6, borderRadius: 3, fontWeight: "bold" }}
+              sx={{ 
+                py: 1.75, 
+                px: 6, 
+                borderRadius: 3.5, 
+                fontWeight: "900",
+                textTransform: "none",
+                fontSize: "1.05rem",
+                letterSpacing: 0.5,
+                background: "linear-gradient(90deg, #06b6d4, #3b82f6)",
+                boxShadow: "0 8px 25px rgba(59, 130, 246, 0.25)",
+                "&:hover": {
+                  background: "linear-gradient(90deg, #0891b2, #2563eb)",
+                  boxShadow: "0 12px 30px rgba(59, 130, 246, 0.35)"
+                }
+              }}
             >
-              {loading ? "Creating…" : "Create table"}
+              {loading ? "Creating schema..." : "⚡ CREATE TABLE SCHEMA"}
             </Button>
           </Stack>
         </CardContent>
       </Card>
 
-      <Card sx={{ boxShadow: 6, borderRadius: 4, overflow: "hidden" }}>
-        <Box sx={{ px: 4, py: 2, bgcolor: "#333", color: "#fff" }}>
-          <Typography variant="h6" fontWeight="bold">
-            Result
-          </Typography>
+      {/* Terminal Output for Create Table Results */}
+      <Card sx={{ 
+        boxShadow: "0 12px 40px rgba(0,0,0,0.08)", 
+        borderRadius: 5, 
+        overflow: "hidden", 
+        border: "1px solid #1e293b" 
+      }}>
+        {/* Terminal Header */}
+        <Box sx={{ 
+          px: 3, 
+          py: 2, 
+          bgcolor: "#0f172a", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "space-between",
+          borderBottom: "1px solid #1e293b"
+        }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: "#ef4444" }} />
+            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: "#f59e0b" }} />
+            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: "#10b981" }} />
+            <Typography variant="subtitle2" fontWeight="800" sx={{ color: "#94a3b8", pl: 1, fontFamily: "monospace" }}>
+              SCHEMA_GENERATOR.log
+            </Typography>
+          </Stack>
+          {result && (
+            <Chip 
+              label={result.error ? "FAILED" : "SUCCESS"} 
+              color={result.error ? "error" : "success"} 
+              size="small" 
+              sx={{ fontWeight: "bold", fontSize: "0.7rem" }} 
+            />
+          )}
         </Box>
-        <CardContent sx={{ p: 4 }}>
-          <Box
-            sx={{
-              p: 3,
-              bgcolor: result?.error ? "#ffebee" : "#fdf8ff",
-              borderRadius: 3,
-              border: `1px solid ${result?.error ? "#ef9a9a" : "#e1bee7"}`,
-              fontFamily: "monospace",
-              overflow: "auto",
-              maxHeight: 400,
-            }}
-          >
+        
+        {/* Terminal Screen */}
+        <CardContent sx={{ p: 0 }}>
+          <Box sx={{ 
+            p: 3, 
+            bgcolor: "#0b0f19", 
+            fontFamily: "Fira Code, Source Code Pro, Courier New, monospace",
+            overflow: "auto", 
+            maxHeight: 500,
+            minHeight: 180
+          }}>
             {result ? (
-              <pre style={{ margin: 0, fontSize: "14px", color: result.error ? "#b71c1c" : "#4a148c" }}>
+              <pre style={{ 
+                margin: 0, 
+                fontSize: "14px", 
+                color: result.error ? "#f87171" : "#10b981",
+                lineHeight: 1.6,
+                whiteSpace: "pre-wrap"
+              }}>
                 {JSON.stringify(result, null, 2)}
               </pre>
             ) : (
-              <Typography color="text.secondary" textAlign="center" sx={{ py: 2 }}>
-                Submit the form to run CREATE TABLE and save metadata.
-              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 5, color: "#475569" }}>
+                <Typography variant="body1" sx={{ fontFamily: "monospace", mb: 1 }}>
+                  &gt; Waiting for schema compilation...
+                </Typography>
+                <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+                  Fill out the column inputs, check properties, and execute layout builder.
+                </Typography>
+              </Box>
             )}
           </Box>
         </CardContent>

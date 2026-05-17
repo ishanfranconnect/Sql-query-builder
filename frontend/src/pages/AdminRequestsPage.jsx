@@ -1,5 +1,25 @@
 import { useEffect, useState } from "react";
-import { Container, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Stack, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Paper, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer,
+  TableHead, 
+  TableRow, 
+  Chip, 
+  Button, 
+  Stack, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  Grid 
+} from "@mui/material";
+import { Link } from "react-router-dom";
 import api from "../api/client";
 
 export default function AdminRequestsPage() {
@@ -22,6 +42,7 @@ export default function AdminRequestsPage() {
       await api.post(`/admin/approve/${id}`);
       fetchRequests();
       setSelectedRequest(null);
+      alert("Query approved and executed successfully!");
     } catch (err) {
       alert("Failed to approve: " + (err.response?.data?.message || err.message));
     }
@@ -32,6 +53,7 @@ export default function AdminRequestsPage() {
       await api.post(`/admin/reject/${id}`);
       fetchRequests();
       setSelectedRequest(null);
+      alert("Request successfully rejected.");
     } catch (err) {
       alert("Failed to reject: " + (err.response?.data?.message || err.message));
     }
@@ -45,45 +67,116 @@ export default function AdminRequestsPage() {
     }
   };
 
+  const getActionColor = (action) => {
+    switch (action) {
+      case "INSERT": return "success";
+      case "UPDATE": return "warning";
+      case "DELETE": return "error";
+      default: return "info";
+    }
+  };
+
   return (
-    <Container sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight="800" color="primary" gutterBottom>
-        🛡️ Admin Approval Workflow
-      </Typography>
-      {error && <Typography color="error" sx={{ mb: 2 }}>Error: {error}</Typography>}
-      <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 3 }}>
+    <Stack spacing={4} sx={{ pb: 6 }}>
+      {/* Title Header */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box>
+          <Typography variant="h4" fontWeight="900" sx={{ background: "linear-gradient(90deg, #ef4444, #dc2626)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", mb: 0.5 }}>
+            🛡️ Administrative Request Center
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Review, audit, approve or reject visual database modification requests submitted by standard users.
+          </Typography>
+        </Box>
+        <Button component={Link} to="/" variant="outlined" sx={{ borderRadius: 3, textTransform: "none", fontWeight: "bold" }}>
+          ← Back to Dashboard
+        </Button>
+      </Box>
+
+      {error && (
+        <Paper sx={{ p: 2, bgcolor: "#ffebee", color: "#c62828", borderRadius: 3, border: "1px solid #ef9a9a" }}>
+          <Typography variant="body2" fontWeight="bold">Error: {error}</Typography>
+        </Paper>
+      )}
+
+      <TableContainer component={Paper} sx={{ 
+        boxShadow: "0 10px 40px rgba(0,0,0,0.04)", 
+        borderRadius: 4, 
+        border: "1px solid rgba(0,0,0,0.05)",
+        overflow: "hidden"
+      }}>
         <Table>
-          <TableHead>
+          <TableHead sx={{ bgcolor: "#f8fafc" }}>
             <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>User</TableCell>
-              <TableCell>Table</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Submitted At</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell sx={{ fontWeight: "800", color: "text.secondary", fontSize: "0.85rem" }}>REQUEST ID</TableCell>
+              <TableCell sx={{ fontWeight: "800", color: "text.secondary", fontSize: "0.85rem" }}>SUBMITTED BY</TableCell>
+              <TableCell sx={{ fontWeight: "800", color: "text.secondary", fontSize: "0.85rem" }}>TARGET TABLE</TableCell>
+              <TableCell sx={{ fontWeight: "800", color: "text.secondary", fontSize: "0.85rem" }}>ACTION TYPE</TableCell>
+              <TableCell sx={{ fontWeight: "800", color: "text.secondary", fontSize: "0.85rem" }}>STATUS</TableCell>
+              <TableCell sx={{ fontWeight: "800", color: "text.secondary", fontSize: "0.85rem" }}>SUBMITTED DATE</TableCell>
+              <TableCell align="right" sx={{ fontWeight: "800", color: "text.secondary", fontSize: "0.85rem" }}>ACTIONS</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {requests.map((req) => (
-              <TableRow key={req.id} hover>
-                <TableCell>#{req.id}</TableCell>
-                <TableCell>{req.user.email}</TableCell>
-                <TableCell>{req.targetTable}</TableCell>
+              <TableRow key={req.id} hover sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+                <TableCell fontWeight="bold">#{req.id}</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: "text.primary" }}>{req.user.email}</TableCell>
                 <TableCell>
-                  <Chip label={req.actionType} size="small" variant="outlined" color="primary" />
+                  <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 700, color: "#1e3a8a", bgcolor: "#f0f4f8", px: 1.25, py: 0.5, borderRadius: 1.5, display: "inline-block" }}>
+                    {req.targetTable}
+                  </Typography>
                 </TableCell>
                 <TableCell>
-                  <Chip label={req.status} color={getStatusColor(req.status)} size="small" />
+                  <Chip 
+                    label={req.actionType} 
+                    color={getActionColor(req.actionType)} 
+                    size="small" 
+                    sx={{ fontWeight: "bold", fontSize: "0.7rem", borderRadius: 1.5 }} 
+                  />
                 </TableCell>
-                <TableCell>{new Date(req.createdAt).toLocaleString()}</TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={1}>
-                    <Button size="small" variant="outlined" onClick={() => setSelectedRequest(req)}>Review</Button>
+                  <Chip 
+                    label={req.status} 
+                    color={getStatusColor(req.status)} 
+                    variant={req.status === "PENDING" ? "outlined" : "filled"}
+                    size="small" 
+                    sx={{ fontWeight: "bold", fontSize: "0.7rem", borderRadius: 1.5 }}
+                  />
+                </TableCell>
+                <TableCell sx={{ color: "text.secondary", fontSize: "0.875rem" }}>
+                  {new Date(req.createdAt).toLocaleString()}
+                </TableCell>
+                <TableCell align="right">
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => setSelectedRequest(req)}
+                      sx={{ borderRadius: 2, textTransform: "none", fontWeight: "bold" }}
+                    >
+                      Audit & Review
+                    </Button>
                     {req.status === "PENDING" && (
                       <>
-                        <Button size="small" color="success" variant="contained" onClick={() => handleApprove(req.id)}>Approve</Button>
-                        <Button size="small" color="error" variant="contained" onClick={() => handleReject(req.id)}>Reject</Button>
+                        <Button 
+                          size="small" 
+                          color="success" 
+                          variant="contained" 
+                          onClick={() => handleApprove(req.id)}
+                          sx={{ borderRadius: 2, textTransform: "none", fontWeight: "bold" }}
+                        >
+                          Approve
+                        </Button>
+                        <Button 
+                          size="small" 
+                          color="error" 
+                          variant="contained" 
+                          onClick={() => handleReject(req.id)}
+                          sx={{ borderRadius: 2, textTransform: "none", fontWeight: "bold" }}
+                        >
+                          Reject
+                        </Button>
                       </>
                     )}
                   </Stack>
@@ -92,70 +185,136 @@ export default function AdminRequestsPage() {
             ))}
             {requests.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center">No pending requests found.</TableCell>
+                <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                  <Typography color="text.secondary" fontWeight="600" sx={{ mb: 1 }}>
+                    All requests processed!
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    No database modification requests are currently waiting in the approval queue.
+                  </Typography>
+                </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </Paper>
+      </TableContainer>
 
-      <Dialog open={!!selectedRequest} onClose={() => setSelectedRequest(null)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ bgcolor: "#f5f5f5", borderBottom: "1px solid #ddd" }}>Request Details: #{selectedRequest?.id}</DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
+      {/* Review details Dialog */}
+      <Dialog 
+        open={!!selectedRequest} 
+        onClose={() => setSelectedRequest(null)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+      >
+        <DialogTitle sx={{ fontWeight: "bold", borderBottom: "1px solid #e2e8f0", pb: 2 }}>
+          Audit Log & Execution Preview: #{selectedRequest?.id}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
           {selectedRequest && (
-            <Stack spacing={3} sx={{ mt: 2 }}>
+            <Stack spacing={3} sx={{ mt: 1 }}>
               <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">SUBMITTED BY</Typography>
-                  <Typography fontWeight="bold">{selectedRequest.user.email}</Typography>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="caption" color="text.secondary" fontWeight="700">SUBMITTED BY</Typography>
+                  <Typography fontWeight="800" color="primary">{selectedRequest.user.email}</Typography>
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">OPERATION</Typography>
-                  <Typography fontWeight="bold">{selectedRequest.actionType} on {selectedRequest.targetTable}</Typography>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="caption" color="text.secondary" fontWeight="700">ACTION DESTINATION</Typography>
+                  <Typography fontWeight="800">{selectedRequest.actionType} on <strong style={{ color: "#1e3a8a" }}>{selectedRequest.targetTable}</strong></Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="caption" color="text.secondary" fontWeight="700">SUBMISSION DATE</Typography>
+                  <Typography fontWeight="800" color="text.secondary">{new Date(selectedRequest.createdAt).toLocaleString()}</Typography>
                 </Grid>
               </Grid>
 
               <Box>
-                <Typography variant="caption" color="text.secondary">SQL QUERY PREVIEW</Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2, mt: 0.5 }}>
-                  <pre style={{ margin: 0, overflowX: "auto", color: "#d32f2f", whiteSpace: "pre-wrap" }}>
-                    {selectedRequest.queryText}
-                  </pre>
-                </Paper>
+                <Typography variant="subtitle2" fontWeight="800" color="text.secondary" sx={{ mb: 1 }}>
+                  💻 GENERATED SQL QUERY
+                </Typography>
+                <Box sx={{ 
+                  p: 2.5, 
+                  bgcolor: "#0b0f19", 
+                  borderRadius: 3, 
+                  fontFamily: "monospace",
+                  color: "#f87171",
+                  overflowX: "auto",
+                  whiteSpace: "pre-wrap"
+                }}>
+                  {selectedRequest.queryText}
+                </Box>
               </Box>
 
-              <Box>
-                <Typography variant="caption" color="text.secondary">FULL PAYLOAD (JSON)</Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: "#333", borderRadius: 2, mt: 0.5 }}>
-                  <pre style={{ margin: 0, overflowX: "auto", color: "#00e676", fontSize: "12px" }}>
-                    {JSON.stringify(JSON.parse(selectedRequest.payload), null, 2)}
-                  </pre>
-                </Paper>
-              </Box>
+              {selectedRequest.payload && (
+                <Box>
+                  <Typography variant="subtitle2" fontWeight="800" color="text.secondary" sx={{ mb: 1 }}>
+                    📦 REQUEST PAYLOAD PARAMS (JSON)
+                  </Typography>
+                  <Box sx={{ 
+                    p: 2.5, 
+                    bgcolor: "#1e293b", 
+                    borderRadius: 3, 
+                    fontFamily: "monospace",
+                    color: "#38bdf8",
+                    fontSize: "0.85rem",
+                    overflowX: "auto"
+                  }}>
+                    <pre style={{ margin: 0 }}>
+                      {JSON.stringify(JSON.parse(selectedRequest.payload), null, 2)}
+                    </pre>
+                  </Box>
+                </Box>
+              )}
 
               {selectedRequest.executionResult && (
                 <Box>
-                  <Typography variant="caption" color="text.secondary">EXECUTION LOGS</Typography>
-                  <Paper variant="outlined" sx={{ p: 2, bgcolor: "#e8f5e9", borderRadius: 2, border: "1px solid #4caf50", mt: 0.5 }}>
-                    <pre style={{ margin: 0, overflowX: "auto", color: "#2e7d32" }}>
+                  <Typography variant="subtitle2" fontWeight="800" color="text.secondary" sx={{ mb: 1 }}>
+                    ⚙️ DATABASE EXECUTION LOGS
+                  </Typography>
+                  <Box sx={{ 
+                    p: 2.5, 
+                    bgcolor: "#f0fdf4", 
+                    borderRadius: 3, 
+                    border: "1px solid #bbf7d0",
+                    fontFamily: "monospace",
+                    color: "#166534",
+                    fontSize: "0.85rem",
+                    overflowX: "auto"
+                  }}>
+                    <pre style={{ margin: 0 }}>
                       {JSON.stringify(JSON.parse(selectedRequest.executionResult), null, 2)}
                     </pre>
-                  </Paper>
+                  </Box>
                 </Box>
               )}
             </Stack>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: "1px solid #ddd" }}>
-          <Button onClick={() => setSelectedRequest(null)}>Cancel</Button>
+        <DialogActions sx={{ p: 2.5, borderTop: "1px solid #e2e8f0" }}>
+          <Button onClick={() => setSelectedRequest(null)} sx={{ fontWeight: "bold" }}>Cancel</Button>
           {selectedRequest?.status === "PENDING" && (
             <>
-              <Button color="error" variant="contained" onClick={() => handleReject(selectedRequest.id)}>Reject Request</Button>
-              <Button color="success" variant="contained" onClick={() => handleApprove(selectedRequest.id)}>Approve & Execute</Button>
+              <Button 
+                color="error" 
+                variant="contained" 
+                onClick={() => handleReject(selectedRequest.id)}
+                sx={{ borderRadius: 2.5, px: 3, fontWeight: "bold" }}
+              >
+                Reject Request
+              </Button>
+              <Button 
+                color="success" 
+                variant="contained" 
+                onClick={() => handleApprove(selectedRequest.id)}
+                sx={{ borderRadius: 2.5, px: 3, fontWeight: "bold" }}
+              >
+                Approve & Execute
+              </Button>
             </>
           )}
         </DialogActions>
       </Dialog>
-    </Container>
+    </Stack>
   );
 }
+
